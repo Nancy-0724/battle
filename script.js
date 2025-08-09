@@ -27,7 +27,7 @@ function extractDriveId(u){
 function toThumbnailUrl(id, sz=1200){ return `https://drive.google.com/thumbnail?id=${id}&sz=w${sz}`; }
 function toUcViewUrl(id){ return `https://drive.google.com/uc?export=view&id=${id}`; }
 
-/* 在 <img> 上做「thumbnail → uc」雙端點回退 */
+/* 圖片設定：thumbnail → 失敗則 uc */
 function setDriveImage(imgEl, name, rawUrl){
   imgEl.alt = name || "";
   const id = extractDriveId(rawUrl);
@@ -43,14 +43,19 @@ function setDriveImage(imgEl, name, rawUrl){
   };
 }
 
-/* ===== Parse (同名且同圖才去重) ===== */
+/* 提供一個「首選縮圖 URL」給排名清單使用 */
+function preferredThumbUrl(rawUrl, size=200){
+  const id = extractDriveId(rawUrl);
+  return id ? toThumbnailUrl(id, size) : rawUrl || "";
+}
+
+/* ===== Parse（同名且同圖才去重） ===== */
 function parseCsvText(csv){
   const rows = csv.split(/\r?\n/).filter(Boolean);
   const split = r => r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x=>x.replace(/^"|"$/g,'').trim());
   const m = rows.map(split);
   const header = m[0].map(h=>h.trim().toLowerCase());
 
-  // 可選 id 欄，沒有就用流水號
   const idIdx  = header.findIndex(h => /^id$/.test(h));
   let nameIdx  = header.findIndex(h => /(name|名稱|title)/.test(h));
   let imgIdx   = header.findIndex(h => /(image|img|url|圖片)/.test(h));
@@ -64,9 +69,8 @@ function parseCsvText(csv){
     if (!name) continue;
     const imgRaw = imgIdx>=0 ? (cols[imgIdx] || "").trim() : "";
     const key = `${name}||${imgRaw}`.toLowerCase();
-    if (seen.has(key)) continue;        // 只在同名且同圖時去重
+    if (seen.has(key)) continue;     // 同名且同圖才去重
     seen.add(key);
-
     const id = (idIdx>=0 && cols[idIdx]) ? String(cols[idIdx]).trim() : `row-${i}`;
     out.push({ id, name, img: imgRaw });
   }
@@ -75,13 +79,12 @@ function parseCsvText(csv){
 
 function parseManualList(text){
   const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-  const seen = new Set();
-  const out = [];
+  const seen = new Set(), out = [];
   lines.forEach((line,i)=>{
     const [name, imgRaw=""] = line.split(",").map(x=>x.trim());
     if (!name) return;
     const key = `${name}||${imgRaw}`.toLowerCase();
-    if (seen.has(key)) return;          // 同名且同圖才去重
+    if (seen.has(key)) return;       // 同名且同圖才去重
     seen.add(key);
     out.push({ id:`m-${i}`, name, img: imgRaw });
   });
@@ -173,17 +176,34 @@ function roundNameBySize(n){
   if(n===16)return"16 強"; if(n===32)return"32 強"; if(n===64)return"64 強";
   return n+" 強";
 }
+
 function renderArena(){
   const p = currentPair();
   if (!p){
     $("#cardA").style.display="none"; $("#cardB").style.display="none"; $(".vs").style.display="none";
     $("#roundLabel").textContent="已結束"; $("#roundProgress").textContent="—"; $("#remaining").textContent="—";
-    const box=$("#championBox"); box.hidden=false; box.innerHTML="<h3>🏆 最終排名</h3>";
-    const ol=document.createElement("ol");
-    state.finalRanking.forEach(id=>{ const e=state.entries.find(x=>x.id===id); if(e){ const li=document.createElement("li"); li.textContent=e.name; ol.appendChild(li);} });
-    box.appendChild(ol);
+
+    // 最終排名（含縮圖）
+    const box=$("#championBox");
+    box.hidden=false;
+    const ol = $("#rankList");
+    ol.innerHTML = ""; // 清空
+    state.finalRanking.forEach(id=>{
+      const e = state.entries.find(x=>x.id===id);
+      if(!e) return;
+      const li = document.createElement("li");
+      const img = document.createElement("img");
+      img.className = "thumb";
+      img.src = preferredThumbUrl(e.img, 200);
+      img.alt = e.name;
+      const span = document.createElement("span");
+      span.textContent = e.name;
+      li.appendChild(img); li.appendChild(span);
+      ol.appendChild(li);
+    });
     return;
   }
+
   $("#cardA").style.display=""; $("#cardB").style.display=""; $(".vs").style.display="";
   setDriveImage($("#imgA"), p.a.name, p.a.img);
   setDriveImage($("#imgB"), p.b.name, p.b.img);
@@ -198,16 +218,21 @@ function renderAll(){ renderArena(); }
 
 /* ===== Bind ===== */
 function bindTournamentEvents(){
-  $("#cardA").addEventListener("click",e=>{ if(!e.target.closest(".pick-btn")) pick("A"); });
-  $("#cardB").addEventListener("click",e=>{ if(!e.target.closest(".pick-btn")) pick("B"); });
-  document.querySelectorAll(".pick-btn").forEach(btn=>btn.addEventListener("click",e=>{ e.stopPropagation(); pick(btn.dataset.side); }));
+  // 直接點整張卡片就選擇（不再需要按鈕）
+  $("#cardA").addEventListener("click", ()=>pick("A"));
+  $("#cardB").addEventListener("click", ()=>pick("B"));
+
   $("#undoBtn").addEventListener("click",undo);
   $("#resetBtn").addEventListener("click",()=>{ if(confirm("確定重置？")){ localStorage.removeItem(STORAGE_KEY); location.reload(); } });
   $("#shotBtn").addEventListener("click",()=>document.body.classList.toggle("screenshot"));
+
   window.addEventListener("keydown",e=>{
     if(e.key==="ArrowLeft") pick("A");
     if(e.key==="ArrowRight") pick("B");
-    const k=e.key.toLowerCase(); if(k==="u") undo(); if(k==="r") $("#resetBtn").click(); if(k==="s") $("#shotBtn").click();
+    const k=e.key.toLowerCase();
+    if(k==="u") undo();
+    if(k==="r") $("#resetBtn").click();
+    if(k==="s") $("#shotBtn").click();
   });
 }
 
