@@ -253,7 +253,6 @@ function bindTournamentEvents(){
 
   $("#undoBtn").addEventListener("click",undo);
   $("#resetBtn").addEventListener("click",()=>{ if(confirm("確定重置？")){ localStorage.removeItem(STORAGE_KEY); location.reload(); } });
-  $("#shotBtn").addEventListener("click",()=>document.body.classList.toggle("screenshot"));
 
   window.addEventListener("keydown",e=>{
     if(e.key==="ArrowLeft") pick("A");
@@ -261,7 +260,6 @@ function bindTournamentEvents(){
     const k=e.key.toLowerCase();
     if(k==="u") undo();
     if(k==="r") $("#resetBtn").click();
-    if(k==="s") $("#shotBtn").click();
   });
 }
 
