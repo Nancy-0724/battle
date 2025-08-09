@@ -1,23 +1,14 @@
-<!DOCTYPE html>
-<html lang="en" >
-<head>
-  <meta charset="UTF-8">
-  <title>Untitled</title>
-  <link rel="stylesheet" href="./style.css">
-
-</head>
-<body>
-<!-- partial:index.partial.html -->
 <!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>單淘汰排行（自訂選項）</title>
-  <link rel="stylesheet" href="styles.css" />
+  <!-- 你的樣式檔 -->
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Setup 模式 -->
+  <!-- Setup：先貼 CSV 或手動輸入清單 -->
   <section id="setup" class="setup-screen">
     <h1>單淘汰排行</h1>
     <p>貼 Google Sheet CSV 連結（<code>.../pub?output=csv</code>），或直接輸入清單：</p>
@@ -26,7 +17,7 @@
     <button id="startBtn">開始比賽</button>
   </section>
 
-  <!-- Tournament 模式 -->
+  <!-- Tournament：開始對戰 -->
   <section id="tournament" class="hidden">
     <header class="topbar">
       <div class="title">單淘汰排行</div>
@@ -51,7 +42,9 @@
           <div class="card-info"><h2 id="nameA">A</h2></div>
           <button class="pick-btn" data-side="A">選擇</button>
         </div>
+
         <div class="vs" aria-hidden="true">VS</div>
+
         <div class="card" id="cardB" tabindex="0" aria-label="右側選項">
           <img id="imgB" alt="" />
           <div class="card-info"><h2 id="nameB">B</h2></div>
@@ -63,7 +56,9 @@
         <div id="championBox" class="champion" hidden>
           <h3>🏆 最終排名</h3>
           <div id="championName">—</div>
+          <!-- 比賽結束後 JS 會插入 <ol> 名次清單 -->
         </div>
+
         <details class="help" open>
           <summary>操作說明</summary>
           <ul>
@@ -75,11 +70,7 @@
     </main>
   </section>
 
-  <script src="app.js" defer></script>
-</body>
-</html>
-<!-- partial -->
-  <script  src="./script.js"></script>
-
+  <!-- 你的腳本檔（和 index.html 同資料夾） -->
+  <script src="script.js" defer></script>
 </body>
 </html>
