@@ -1,3 +1,7 @@
+/* ===== Config 開關 ===== */
+// 名次賽是否固定配位（不洗牌）。主賽仍維持洗牌。
+const FIXED_SEED_FOR_PLACEMENT = true;
+
 /* ===== State ===== */
 const STORAGE_KEY = "se-bracket-state-v2";
 let state = {
@@ -28,9 +32,9 @@ function isDriveUrl(u){
 }
 function extractDriveId(u){
   if(!u) return "";
-  u=String(u).trim();
-  const m1=u.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
-  const m2=u.match(/\/d\/([A-Za-z0-9_-]{10,})/);
+  u=String(u).toLowerCase().trim();
+  const m1=u.match(/[?&]id=([a-z0-9_-]{10,})/);
+  const m2=u.match(/\/d\/([a-z0-9_-]{10,})/);
   return m1?m1[1]:(m2?m2[1]:"");
 }
 function toThumbnailUrl(id, sz=1200){ return `https://drive.google.com/thumbnail?id=${id}&sz=w${sz}`; }
@@ -59,7 +63,7 @@ function setImage(imgEl, name, rawUrl){
   }
 }
 
-/* 提供一個「首選縮圖 URL」給排名清單使用（Drive 用縮圖，其它回傳原網址） */
+/* 提供一個「首選縮圖 URL」給排名清單（Drive 用縮圖，其它回傳原網址） */
 function preferredThumbUrl(rawUrl, size=200){
   if (!rawUrl) return "";
   if (isDriveUrl(rawUrl)) {
@@ -129,7 +133,7 @@ function seedBracketFromIds(ids, label){
 }
 
 function seedFirstRound(){
-  const ids = shuffle(state.entries.map(e=>e.id)); // 固定首輪就拿掉 shuffle
+  const ids = shuffle(state.entries.map(e=>e.id)); // 主賽首輪保持洗牌
   state.history = [];
   state.finalRanking = [];
   state.placementQueue = [];
@@ -137,7 +141,7 @@ function seedFirstRound(){
   seedBracketFromIds(ids, "主賽");
 }
 
-/* ===== Lightweight snapshots (fix OOM) ===== */
+/* ===== Lightweight snapshots ===== */
 function snapshotOf(s){
   return JSON.stringify({
     entries: s.entries,
@@ -185,7 +189,7 @@ function enqueuePlacement(ids, label){
 function startNextPlacement(){
   const job = state.placementQueue.shift();
   if(!job){ renderAll(); return; }
-  seedBracketFromIds(job.ids, job.label);
+  seedBracketFromIds(job.ids, job.label); // 名次賽啟動時不洗牌，沿用 ids 順序
   renderAll();
 }
 function currentPair(){
@@ -223,7 +227,15 @@ function pick(side){
 
   // 該輪完了？
   if (state.matchIdx >= round.length){
-    const nextIds = shuffle(state.nextSeeds.slice()); state.nextSeeds = [];
+    let nextIds = state.nextSeeds.slice();
+    state.nextSeeds = [];
+
+    // 名次賽固定配位：不洗牌；主賽仍洗牌
+    const isPlacement = String(state.phaseLabel || "").startsWith("名次賽");
+    if (!(FIXED_SEED_FOR_PLACEMENT && isPlacement)) {
+      nextIds = shuffle(nextIds);
+    }
+
     const nextRound = buildRoundFrom(nextIds);
 
     if (nextRound.length === 0){
@@ -249,10 +261,9 @@ function finishCurrentBracket(finalWinnerId){
 
   // 依倒序把各輪敗者群組成名次賽，逐一排入 queue
   // 例如：四強敗者 → 「第 X–(X+1) 名」；八強敗者 → 「第 ... 名」
-  const totalAdded = 1 + (runnerUpId?1:0);
   let baseRankStart = state.finalRanking.length + 1; // 下一個名次開始
   for(let r = state.rounds.length - 2; r>=0; r--){
-    const group = (state.roundLosers[r] || []).slice();
+    const group = (state.roundLosers[r] || []).slice(); // 這裡的順序 = 該輪原配位順序
     if(group.length===0) continue;
     const label = `名次賽：第 ${baseRankStart}–${baseRankStart + group.length - 1} 名`;
     enqueuePlacement(group, label);
