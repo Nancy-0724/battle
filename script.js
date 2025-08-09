@@ -15,9 +15,13 @@ const $ = s => document.querySelector(s);
 const shuffle = a => a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
 const deepClone = o => JSON.parse(JSON.stringify(o));
 function slug(s){ return s.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w\u4E00-\u9FFF]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase(); }
-const medalFor = i => (i===0?'🥇':i===1?'🥈':i===2?'🥉':''); // ← 前三名獎牌
+const medalFor = i => (i===0?'🥇':i===1?'🥈':i===2?'🥉':''); // 前三名獎牌
 
 /* ===== Google Drive image helpers ===== */
+function isDriveUrl(u){
+  if(!u) return false;
+  return /(^https?:\/\/)?(www\.)?drive\.google\.com/.test(String(u));
+}
 function extractDriveId(u){
   if(!u) return "";
   u=String(u).trim();
@@ -28,26 +32,40 @@ function extractDriveId(u){
 function toThumbnailUrl(id, sz=1200){ return `https://drive.google.com/thumbnail?id=${id}&sz=w${sz}`; }
 function toUcViewUrl(id){ return `https://drive.google.com/uc?export=view&id=${id}`; }
 
-/* 圖片設定：thumbnail → 失敗則 uc */
-function setDriveImage(imgEl, name, rawUrl){
+/* 設定圖片：
+   - Drive：用 thumbnail → 失敗改 uc
+   - 其他網址：直接使用原網址 */
+function setImage(imgEl, name, rawUrl){
   imgEl.alt = name || "";
-  const id = extractDriveId(rawUrl);
-  if(!id){ imgEl.src=""; console.warn("沒有檔案ID：", rawUrl); return; }
-  const thumb = toThumbnailUrl(id);
-  const uc    = toUcViewUrl(id);
-  imgEl.onerror = null;
-  imgEl.src = thumb;
-  imgEl.onerror = () => {
-    console.warn("thumbnail 失敗，改試 uc：", thumb);
-    imgEl.onerror = () => console.error("uc 也失敗：", uc);
-    imgEl.src = uc;
-  };
+  if (!rawUrl) { imgEl.src = ""; return; }
+
+  if (isDriveUrl(rawUrl)) {
+    const id = extractDriveId(rawUrl);
+    if(!id){ imgEl.src=""; console.warn("Drive 連結缺少檔案ID：", rawUrl); return; }
+    const thumb = toThumbnailUrl(id);
+    const uc    = toUcViewUrl(id);
+    imgEl.onerror = null;
+    imgEl.src = thumb;
+    imgEl.onerror = () => {
+      console.warn("thumbnail 失敗，改試 uc：", thumb);
+      imgEl.onerror = () => console.error("uc 也失敗：", uc);
+      imgEl.src = uc;
+    };
+  } else {
+    // 非 Drive：直接用原圖網址
+    imgEl.onerror = () => console.warn("圖片載入失敗：", rawUrl);
+    imgEl.src = rawUrl;
+  }
 }
 
-/* 提供一個「首選縮圖 URL」給排名清單使用 */
+/* 提供一個「首選縮圖 URL」給排名清單使用（Drive 用縮圖，其它回傳原網址） */
 function preferredThumbUrl(rawUrl, size=200){
-  const id = extractDriveId(rawUrl);
-  return id ? toThumbnailUrl(id, size) : rawUrl || "";
+  if (!rawUrl) return "";
+  if (isDriveUrl(rawUrl)) {
+    const id = extractDriveId(rawUrl);
+    return id ? toThumbnailUrl(id, size) : rawUrl;
+  }
+  return rawUrl;
 }
 
 /* ===== Parse（同名且同圖才去重） ===== */
@@ -191,13 +209,11 @@ function renderArena(){
     const ol = $("#rankList");
     ol.innerHTML = ""; // 清空
 
-    // 依現有 finalRanking（winner 已 unshift 到最前）
     state.finalRanking.forEach((id, i)=>{
       const e = state.entries.find(x=>x.id===id);
       if(!e) return;
       const li = document.createElement("li");
 
-      // 名次數字 + 獎牌
       const rankLabel = document.createElement("span");
       rankLabel.textContent = `${i+1}. `;
       rankLabel.style.fontWeight = "700";
@@ -207,7 +223,6 @@ function renderArena(){
       medal.textContent = medalFor(i);
       medal.style.marginRight = medal.textContent ? "6px" : "0";
 
-      // 縮圖
       const img = document.createElement("img");
       img.className = "thumb";
       img.src = preferredThumbUrl(e.img, 200);
@@ -223,7 +238,6 @@ function renderArena(){
       ol.appendChild(li);
     });
 
-    // 回來顯示 sidebar
     const sb = $(".sidebar");
     if (sb) sb.style.display = "block";
     return;
@@ -234,8 +248,8 @@ function renderArena(){
   if (sb) sb.style.display = "none";
 
   $("#cardA").style.display=""; $("#cardB").style.display=""; $(".vs").style.display="";
-  setDriveImage($("#imgA"), p.a.name, p.a.img);
-  setDriveImage($("#imgB"), p.b.name, p.b.img);
+  setImage($("#imgA"), p.a.name, p.a.img);
+  setImage($("#imgB"), p.b.name, p.b.img);
   $("#nameA").textContent=p.a.name; $("#nameB").textContent=p.b.name;
 
   const size = state.rounds[state.roundIdx].length*2;
@@ -247,7 +261,7 @@ function renderAll(){ renderArena(); }
 
 /* ===== Bind ===== */
 function bindTournamentEvents(){
-  // 直接點整張卡片就選擇（不再需要按鈕）
+  // 直接點整張卡片就選擇
   $("#cardA").addEventListener("click", ()=>pick("A"));
   $("#cardB").addEventListener("click", ()=>pick("B"));
 
