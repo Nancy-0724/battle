@@ -25,22 +25,27 @@ const deepClone = o => JSON.parse(JSON.stringify(o));
 function slug(s){ return s.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w\u4E00-\u9FFF]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase(); }
 const medalFor = i => (i===0?'🥇':i===1?'🥈':i===2?'🥉':''); // 前三名獎牌
 
-/* ===== Google Drive image helpers ===== */
+/* ===== Google Drive image helpers（已修正：不轉小寫） ===== */
 function isDriveUrl(u){
   if(!u) return false;
   return /(^https?:\/\/)?(www\.)?drive\.google\.com/.test(String(u));
 }
 function extractDriveId(u){
   if(!u) return "";
-  u=String(u).toLowerCase().trim();
-  const m1=u.match(/[?&]id=([a-z0-9_-]{10,})/);
-  const m2=u.match(/\/d\/([a-z0-9_-]{10,})/);
-  return m1?m1[1]:(m2?m2[1]:"");
+  const s = String(u).trim();                // 不轉小寫！Drive ID 區分大小寫
+  // 1) ?id=FILEID
+  const m1 = s.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
+  if (m1) return m1[1];
+  // 2) /file/d/FILEID 或 /d/FILEID
+  const m2 = s.match(/\/(?:file\/)?d\/([A-Za-z0-9_-]{10,})/);
+  if (m2) return m2[1];
+  // 3) 其他可再擴充
+  return "";
 }
 function toThumbnailUrl(id, sz=1200){ return `https://drive.google.com/thumbnail?id=${id}&sz=w${sz}`; }
 function toUcViewUrl(id){ return `https://drive.google.com/uc?export=view&id=${id}`; }
 
-/* 設定圖片 */
+/* 設定圖片（先用縮圖，失敗再退回 uc） */
 function setImage(imgEl, name, rawUrl){
   imgEl.alt = name || "";
   if (!rawUrl) { imgEl.src = ""; return; }
@@ -63,7 +68,7 @@ function setImage(imgEl, name, rawUrl){
   }
 }
 
-/* 提供一個「首選縮圖 URL」給排名清單（Drive 用縮圖，其它回傳原網址） */
+/* 排名清單使用的縮圖 URL（Drive → thumbnail，其它直接回傳） */
 function preferredThumbUrl(rawUrl, size=200){
   if (!rawUrl) return "";
   if (isDriveUrl(rawUrl)) {
@@ -263,7 +268,7 @@ function finishCurrentBracket(finalWinnerId){
   // 例如：四強敗者 → 「第 X–(X+1) 名」；八強敗者 → 「第 ... 名」
   let baseRankStart = state.finalRanking.length + 1; // 下一個名次開始
   for(let r = state.rounds.length - 2; r>=0; r--){
-    const group = (state.roundLosers[r] || []).slice(); // 這裡的順序 = 該輪原配位順序
+    const group = (state.roundLosers[r] || []).slice(); // 保留原配位順序
     if(group.length===0) continue;
     const label = `名次賽：第 ${baseRankStart}–${baseRankStart + group.length - 1} 名`;
     enqueuePlacement(group, label);
