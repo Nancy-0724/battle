@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>Untitled</title>
+  <link rel="stylesheet" href="./style.css">
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>單淘汰排行（自訂選項）</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Setup 模式 -->
+  <section id="setup" class="setup-screen">
+    <h1>單淘汰排行</h1>
+    <p>貼 Google Sheet CSV 連結（<code>.../pub?output=csv</code>），或直接輸入清單：</p>
+    <input id="csvUrl" type="url" placeholder="CSV 連結（選填）" />
+    <textarea id="manualList" placeholder="每行一筆，格式：名稱, 圖片網址（可省略）"></textarea>
+    <button id="startBtn">開始比賽</button>
+  </section>
+
+  <!-- Tournament 模式 -->
+  <section id="tournament" class="hidden">
+    <header class="topbar">
+      <div class="title">單淘汰排行</div>
+      <div class="round-info" aria-live="polite">
+        <span id="roundLabel">—</span>
+        <span class="sep">•</span>
+        <span>本回合進度：<b id="roundProgress">0/0</b></span>
+        <span class="sep">•</span>
+        <span>剩餘選手：<b id="remaining">0</b></span>
+      </div>
+      <nav class="actions">
+        <button id="undoBtn" class="btn" title="U">Undo</button>
+        <button id="shotBtn" class="btn" title="S">截圖模式</button>
+        <button id="resetBtn" class="btn danger" title="R">重置</button>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <section class="arena" aria-label="對戰區">
+        <div class="card" id="cardA" tabindex="0" aria-label="左側選項">
+          <img id="imgA" alt="" />
+          <div class="card-info"><h2 id="nameA">A</h2></div>
+          <button class="pick-btn" data-side="A">選擇</button>
+        </div>
+        <div class="vs" aria-hidden="true">VS</div>
+        <div class="card" id="cardB" tabindex="0" aria-label="右側選項">
+          <img id="imgB" alt="" />
+          <div class="card-info"><h2 id="nameB">B</h2></div>
+          <button class="pick-btn" data-side="B">選擇</button>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <div id="championBox" class="champion" hidden>
+          <h3>🏆 最終排名</h3>
+          <div id="championName">—</div>
+        </div>
+        <details class="help" open>
+          <summary>操作說明</summary>
+          <ul>
+            <li>點卡片或按鈕：選擇勝者</li>
+            <li>鍵盤：← 選左、→ 選右、U 退回、S 截圖、R 重置</li>
+          </ul>
+        </details>
+      </aside>
+    </main>
+  </section>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
+<!-- partial -->
+  <script  src="./script.js"></script>
+
+</body>
+</html>
