@@ -1,5 +1,5 @@
 /* ===== State ===== */
-const STORAGE_KEY = "se-bracket-state-v1";
+const STORAGE_KEY = "se-bracket-state-v2";
 let state = {
   entries: [],
   rounds: [],
@@ -7,7 +7,11 @@ let state = {
   matchIdx: 0,
   nextSeeds: [],
   history: [],
-  finalRanking: []
+  finalRanking: [],
+  // Plan B: placement brackets
+  phaseLabel: "主賽",
+  placementQueue: [],   // [{ids:[], label:""}]
+  roundLosers: {}       // { roundIdx: [id,id,...] } for the current bracket
 };
 
 /* ===== Utils ===== */
@@ -32,9 +36,7 @@ function extractDriveId(u){
 function toThumbnailUrl(id, sz=1200){ return `https://drive.google.com/thumbnail?id=${id}&sz=w${sz}`; }
 function toUcViewUrl(id){ return `https://drive.google.com/uc?export=view&id=${id}`; }
 
-/* 設定圖片：
-   - Drive：用 thumbnail → 失敗改 uc
-   - 其他網址：直接使用原網址 */
+/* 設定圖片 */
 function setImage(imgEl, name, rawUrl){
   imgEl.alt = name || "";
   if (!rawUrl) { imgEl.src = ""; return; }
@@ -52,7 +54,6 @@ function setImage(imgEl, name, rawUrl){
       imgEl.src = uc;
     };
   } else {
-    // 非 Drive：直接用原圖網址
     imgEl.onerror = () => console.warn("圖片載入失敗：", rawUrl);
     imgEl.src = rawUrl;
   }
@@ -118,18 +119,23 @@ function buildRoundFrom(ids){
   for (let i=0;i<ids.length;i+=2) pairs.push({ aId:ids[i], bId:ids[i+1], winnerId:null });
   return pairs;
 }
-function seedFirstRound(){
-  const ids = shuffle(state.entries.map(e=>e.id)); // 要固定首輪就拿掉 shuffle
-  state.nextSeeds = [];                 // 先清空，讓 buildRoundFrom 能把「輪空」塞進來
-  const firstRound = buildRoundFrom(ids);
-  state.rounds = [ firstRound ];
+function seedBracketFromIds(ids, label){
+  state.nextSeeds = [];
+  state.rounds = [ buildRoundFrom(ids) ];
   state.roundIdx = 0;
   state.matchIdx = 0;
-  state.history = [];
-  state.finalRanking = [];
-  // 注意：這裡「不要」再把 state.nextSeeds 清掉！
+  state.roundLosers = {};
+  state.phaseLabel = label || state.phaseLabel;
 }
 
+function seedFirstRound(){
+  const ids = shuffle(state.entries.map(e=>e.id)); // 固定首輪就拿掉 shuffle
+  state.history = [];
+  state.finalRanking = [];
+  state.placementQueue = [];
+  state.phaseLabel = "主賽";
+  seedBracketFromIds(ids, "主賽");
+}
 
 /* ===== Lightweight snapshots (fix OOM) ===== */
 function snapshotOf(s){
@@ -139,7 +145,10 @@ function snapshotOf(s){
     roundIdx: s.roundIdx,
     matchIdx: s.matchIdx,
     nextSeeds: s.nextSeeds,
-    finalRanking: s.finalRanking
+    finalRanking: s.finalRanking,
+    phaseLabel: s.phaseLabel,
+    placementQueue: s.placementQueue,
+    roundLosers: s.roundLosers
   });
 }
 function pushSnapshot(){
@@ -157,37 +166,28 @@ function undo(){
   state.matchIdx = s.matchIdx;
   state.nextSeeds = s.nextSeeds;
   state.finalRanking = s.finalRanking;
+  state.phaseLabel = s.phaseLabel;
+  state.placementQueue = s.placementQueue;
+  state.roundLosers = s.roundLosers;
   renderAll();
 }
 
-/* ===== Progress ===== */
-function pick(side){
-  const round = state.rounds[state.roundIdx];
-  const match = round[state.matchIdx];
-  const winnerId = side==="A" ? match.aId : match.bId;
-  const loserId  = side==="A" ? match.bId : match.aId;
-
-  pushSnapshot();
-  match.winnerId = winnerId;
-  state.finalRanking.unshift(loserId);
-
-  state.nextSeeds.push(winnerId);
-  state.matchIdx++;
-
-  if (state.matchIdx >= round.length){
-    const nextIds = shuffle(state.nextSeeds.slice()); state.nextSeeds = [];
-    const nextRound = buildRoundFrom(nextIds);
-    if (nextRound.length === 0){
-      state.finalRanking.unshift(winnerId);
-      renderAll(); return;
-    }
-    state.rounds.push(nextRound);
-    state.roundIdx++; state.matchIdx = 0;
+/* ===== Helpers for Plan B ===== */
+function enqueuePlacement(ids, label){
+  if(!ids || ids.length<1) return;
+  if(ids.length===1){
+    // 單人，直接成為下一名次
+    state.finalRanking.push(ids[0]);
+  }else{
+    state.placementQueue.push({ ids: ids.slice(), label });
   }
+}
+function startNextPlacement(){
+  const job = state.placementQueue.shift();
+  if(!job){ renderAll(); return; }
+  seedBracketFromIds(job.ids, job.label);
   renderAll();
 }
-
-/* ===== UI ===== */
 function currentPair(){
   const r = state.rounds[state.roundIdx];
   const m = r && r[state.matchIdx];
@@ -202,12 +202,85 @@ function roundNameBySize(n){
   return n+" 強";
 }
 
+/* ===== Progress ===== */
+function pick(side){
+  const round = state.rounds[state.roundIdx];
+  const match = round[state.matchIdx];
+  if(!match) return;
+
+  const winnerId = side==="A" ? match.aId : match.bId;
+  const loserId  = side==="A" ? match.bId : match.aId;
+
+  pushSnapshot();
+  match.winnerId = winnerId;
+
+  // 記錄本輪敗者（Plan B 用於後續名次賽）
+  (state.roundLosers[state.roundIdx] ||= []).push(loserId);
+
+  // 推進
+  state.nextSeeds.push(winnerId);
+  state.matchIdx++;
+
+  // 該輪完了？
+  if (state.matchIdx >= round.length){
+    const nextIds = shuffle(state.nextSeeds.slice()); state.nextSeeds = [];
+    const nextRound = buildRoundFrom(nextIds);
+
+    if (nextRound.length === 0){
+      // 這個 bracket 結束
+      finishCurrentBracket(winnerId);
+      return;
+    }
+    state.rounds.push(nextRound);
+    state.roundIdx++; state.matchIdx = 0;
+  }
+  renderAll();
+}
+
+function finishCurrentBracket(finalWinnerId){
+  // 找到決賽對手（亞軍）
+  const lastRound = state.rounds[state.rounds.length-1];
+  const finalMatch = lastRound[lastRound.length-1];
+  const runnerUpId = finalMatch ? ((finalMatch.aId===finalWinnerId)? finalMatch.bId : finalMatch.aId) : null;
+
+  // 先把冠軍、亞軍加入總排名
+  state.finalRanking.push(finalWinnerId);
+  if(runnerUpId) state.finalRanking.push(runnerUpId);
+
+  // 依倒序把各輪敗者群組成名次賽，逐一排入 queue
+  // 例如：四強敗者 → 「第 X–(X+1) 名」；八強敗者 → 「第 ... 名」
+  const totalAdded = 1 + (runnerUpId?1:0);
+  let baseRankStart = state.finalRanking.length + 1; // 下一個名次開始
+  for(let r = state.rounds.length - 2; r>=0; r--){
+    const group = (state.roundLosers[r] || []).slice();
+    if(group.length===0) continue;
+    const label = `名次賽：第 ${baseRankStart}–${baseRankStart + group.length - 1} 名`;
+    enqueuePlacement(group, label);
+    baseRankStart += group.length;
+  }
+
+  // 清空目前 bracket 狀態
+  state.rounds = []; state.roundIdx = 0; state.matchIdx = 0;
+  state.nextSeeds = []; state.roundLosers = {};
+
+  // 還有待辦的名次賽就開打；否則結束
+  if(state.placementQueue.length>0){
+    startNextPlacement();
+  }else{
+    // 完賽
+    state.phaseLabel = "已結束";
+    renderAll();
+  }
+}
+
+/* ===== UI ===== */
 function renderArena(){
   const p = currentPair();
   if (!p){
-    // 結束
+    // 結束或無進行中的 bracket
     $("#cardA").style.display="none"; $("#cardB").style.display="none"; $(".vs").style.display="none";
-    $("#roundLabel").textContent="已結束"; $("#roundProgress").textContent="—"; $("#remaining").textContent="—";
+    $("#roundLabel").textContent= state.phaseLabel || "已結束";
+    $("#roundProgress").textContent="—"; $("#remaining").textContent="—";
 
     // 顯示 sidebar（最終排名）
     const box=$("#championBox");
@@ -259,7 +332,8 @@ function renderArena(){
   $("#nameA").textContent=p.a.name; $("#nameB").textContent=p.b.name;
 
   const size = state.rounds[state.roundIdx].length*2;
-  $("#roundLabel").textContent = roundNameBySize(size);
+  const label = `${state.phaseLabel}｜${roundNameBySize(size)}`;
+  $("#roundLabel").textContent = label;
   $("#roundProgress").textContent = `${state.matchIdx+1}/${state.rounds[state.roundIdx].length}`;
   $("#remaining").textContent = size;
 }
