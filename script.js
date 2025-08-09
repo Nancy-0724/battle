@@ -8,20 +8,19 @@ function slug(s){ return s.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').repl
 function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 function load(){ try{ state = JSON.parse(localStorage.getItem(STORAGE_KEY)); return !!state; }catch{ return false; } }
 
-/* ---- 1) 正規化 Drive 連結，確保可嵌入 ---- */
+/* ---- 將各種 Drive 連結統一轉為可嵌入的縮圖端點 ---- */
 function normalizeDriveUrl(url) {
   if (!url) return "";
   const u = String(url).trim();
-  // 抓 id=... 或 /d/.../
+  // 支援 ?id=FILE_ID 與 /d/FILE_ID/ 兩種取法
   const mParam = u.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
   const mPath  = u.match(/\/d\/([A-Za-z0-9_-]{10,})/);
   const id = mParam ? mParam[1] : (mPath ? mPath[1] : "");
-  if (!id) return u; // 抓不到就原樣（方便你看到哪張壞）
-  // 最穩嵌入格式
-  return `https://drive.google.com/uc?export=view&id=${id}`;
+  if (!id) return u;               // 抓不到就原樣回傳，方便你檢
+  return `https://drive.google.com/thumbnail?id=${id}&sz=w1200`;  // 可嵌入、較穩
 }
 
-/* ---- 2) 解析資料 ---- */
+/* ---- 解析資料 ---- */
 function parseCsvText(csvText){
   const rows = csvText.split(/\r?\n/).filter(Boolean);
   const splitRow = r => r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x=>x.replace(/^"|"$/g,'').trim());
@@ -37,12 +36,11 @@ function parseCsvText(csvText){
     const key = name.toLowerCase();
     if (seen.has(key)) continue; seen.add(key);
     let img = imgIdx>=0 ? (matrix[i][imgIdx]||"").trim() : "";
-    img = normalizeDriveUrl(img);            // ← 重點：標準化 URL
+    img = normalizeDriveUrl(img);
     out.push({ id: slug(name)+"-"+i, name, img });
   }
   return out;
 }
-
 function parseManualList(text){
   const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   const seen = new Set(), out = [];
@@ -51,29 +49,28 @@ function parseManualList(text){
     if (!name) return;
     const key = name.toLowerCase();
     if (seen.has(key)) return; seen.add(key);
-    let img = normalizeDriveUrl(imgRaw || "");   // ← 一樣標準化
+    let img = normalizeDriveUrl(imgRaw || "");
     out.push({ id: slug(name)+"-"+i, name, img });
   });
   return out;
 }
 
-/* ---- 3) 建立賽程 ---- */
+/* ---- 建立賽程（含 bye） ---- */
 function buildRoundFrom(listIds){
   const ids = listIds.slice();
-  if (ids.length % 2 === 1) state.nextSeeds.push(ids.pop()); // bye
+  if (ids.length % 2 === 1) state.nextSeeds.push(ids.pop()); // 奇數 → 最後一位直升
   const pairs = [];
   for (let i=0;i<ids.length;i+=2) pairs.push({ aId:ids[i], bId:ids[i+1], winnerId:null });
   return pairs;
 }
-
 function seedFirstRound(){
-  const ids = shuffle(state.entries.map(e=>e.id)); // 要固定首輪順序，就移除 shuffle
+  const ids = shuffle(state.entries.map(e=>e.id)); // 要固定首輪順序就移除 shuffle
   state.rounds = [ buildRoundFrom(ids) ];
   state.roundIdx = 0; state.matchIdx = 0;
   state.nextSeeds = []; state.history = []; state.finalRanking = [];
 }
 
-/* ---- 4) 推進 ---- */
+/* ---- 推進／Undo ---- */
 function pushSnapshot(){ state.history.push(JSON.stringify(state)); }
 function pick(side){
   const round = state.rounds[state.roundIdx], match = round[state.matchIdx];
@@ -94,7 +91,7 @@ function pick(side){
 }
 function undo(){ const snap = state.history.pop(); if (!snap) return; state = JSON.parse(snap); save(); renderAll(); }
 
-/* ---- 5) 畫面 ---- */
+/* ---- 畫面 ---- */
 function currentPair(){
   const r = state.rounds[state.roundIdx], m = r && r[state.matchIdx];
   if (!m) return null;
@@ -106,7 +103,6 @@ function roundNameBySize(size){
   if (size===16) return "16 強"; if (size===32) return "32 強"; if (size===64) return "64 強";
   return size+" 強";
 }
-
 function renderArena(){
   const pair = currentPair();
   if (!pair){
@@ -124,9 +120,12 @@ function renderArena(){
   }
 
   $("#cardA").style.display=""; $("#cardB").style.display=""; $(".vs").style.display="";
-  // 不做示意圖 fallback：載不到就破圖，方便你檢查是哪張
   $("#imgA").src = pair.a.img || ""; $("#imgA").alt = pair.a.name;
   $("#imgB").src = pair.b.img || ""; $("#imgB").alt = pair.b.name;
+
+  // 若圖載不到，印出是哪個網址失敗，方便你修連結/權限
+  $("#imgA").onerror = () => console.warn("載入失敗(A)：", pair.a.img);
+  $("#imgB").onerror = () => console.warn("載入失敗(B)：", pair.b.img);
 
   $("#nameA").textContent = pair.a.name;
   $("#nameB").textContent = pair.b.name;
@@ -138,7 +137,7 @@ function renderArena(){
 }
 function renderAll(){ renderArena(); }
 
-/* ---- 6) 事件 ---- */
+/* ---- 綁事件 ---- */
 function bindTournamentEvents(){
   $("#cardA").addEventListener("click",e=>{ if(!e.target.closest(".pick-btn")) pick("A"); });
   $("#cardB").addEventListener("click",e=>{ if(!e.target.closest(".pick-btn")) pick("B"); });
@@ -156,7 +155,7 @@ function bindTournamentEvents(){
   });
 }
 
-/* ---- 7) Setup ---- */
+/* ---- Setup：讀 CSV 或手動清單 ---- */
 document.getElementById("startBtn").addEventListener("click", async ()=>{
   let entries = [];
   const csvUrl = $("#csvUrl").value.trim();
