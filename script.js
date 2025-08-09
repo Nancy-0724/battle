@@ -15,6 +15,7 @@ const $ = s => document.querySelector(s);
 const shuffle = a => a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
 const deepClone = o => JSON.parse(JSON.stringify(o));
 function slug(s){ return s.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w\u4E00-\u9FFF]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase(); }
+const medalFor = i => (i===0?'🥇':i===1?'🥈':i===2?'🥉':''); // ← 前三名獎牌
 
 /* ===== Google Drive image helpers ===== */
 function extractDriveId(u){
@@ -180,29 +181,57 @@ function roundNameBySize(n){
 function renderArena(){
   const p = currentPair();
   if (!p){
+    // 結束
     $("#cardA").style.display="none"; $("#cardB").style.display="none"; $(".vs").style.display="none";
     $("#roundLabel").textContent="已結束"; $("#roundProgress").textContent="—"; $("#remaining").textContent="—";
 
-    // 最終排名（含縮圖）
+    // 顯示 sidebar（最終排名）
     const box=$("#championBox");
     box.hidden=false;
     const ol = $("#rankList");
     ol.innerHTML = ""; // 清空
-    state.finalRanking.forEach(id=>{
+
+    // 依現有 finalRanking（winner 已 unshift 到最前）
+    state.finalRanking.forEach((id, i)=>{
       const e = state.entries.find(x=>x.id===id);
       if(!e) return;
       const li = document.createElement("li");
+
+      // 名次數字 + 獎牌
+      const rankLabel = document.createElement("span");
+      rankLabel.textContent = `${i+1}. `;
+      rankLabel.style.fontWeight = "700";
+      rankLabel.style.minWidth = "2.5em";
+
+      const medal = document.createElement("span");
+      medal.textContent = medalFor(i);
+      medal.style.marginRight = medal.textContent ? "6px" : "0";
+
+      // 縮圖
       const img = document.createElement("img");
       img.className = "thumb";
       img.src = preferredThumbUrl(e.img, 200);
       img.alt = e.name;
-      const span = document.createElement("span");
-      span.textContent = e.name;
-      li.appendChild(img); li.appendChild(span);
+
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = e.name;
+
+      li.appendChild(rankLabel);
+      li.appendChild(medal);
+      li.appendChild(img);
+      li.appendChild(nameSpan);
       ol.appendChild(li);
     });
+
+    // 回來顯示 sidebar
+    const sb = $(".sidebar");
+    if (sb) sb.style.display = "block";
     return;
   }
+
+  // 進行中：隱藏 sidebar
+  const sb = $(".sidebar");
+  if (sb) sb.style.display = "none";
 
   $("#cardA").style.display=""; $("#cardB").style.display=""; $(".vs").style.display="";
   setDriveImage($("#imgA"), p.a.name, p.a.img);
