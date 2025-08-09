@@ -5,9 +5,7 @@ body {
   color: #e7eaf0;
 }
 
-.hidden {
-  display: none;
-}
+.hidden { display: none; }
 
 /* ===== 設定畫面 ===== */
 .setup-screen {
@@ -18,11 +16,7 @@ body {
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,.3);
 }
-
-.setup-screen h1 {
-  margin-top: 0;
-}
-
+.setup-screen h1 { margin-top: 0; }
 .setup-screen input,
 .setup-screen textarea {
   width: 100%;
@@ -33,112 +27,72 @@ body {
   background: #1d2331;
   color: #fff;
 }
-
-.setup-screen textarea {
-  height: 200px;
-  resize: vertical;
-}
-
+.setup-screen textarea { height: 200px; resize: vertical; }
 .setup-screen button {
-  padding: 10px 16px;
-  margin-top: 10px;
-  background: #42d392;
-  color: #000;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+  padding: 10px 16px; margin-top: 10px;
+  background: #42d392; color: #000;
+  border: none; border-radius: 4px; cursor: pointer;
 }
-
-.setup-screen button:hover {
-  background: #2fa06e;
-}
+.setup-screen button:hover { background: #2fa06e; }
 
 /* ===== 比賽畫面 ===== */
 .topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 16px;
-  background: #161a24;
-  position: sticky;
-  top: 0;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 16px; background: #161a24; position: sticky; top: 0;
 }
-
-.title {
-  font-weight: bold;
-}
-
-.round-info {
-  font-size: 14px;
-  color: #9aa4b2;
-}
-
-.sep {
-  margin: 0 4px;
-}
-
-.actions button {
-  margin-left: 6px;
-}
+.title { font-weight: bold; }
+.round-info { font-size: 14px; color: #9aa4b2; }
+.sep { margin: 0 4px; }
+.actions button { margin-left: 6px; }
+.btn { background:#2b2b2b; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; }
+.btn.danger { background:#a33; }
 
 .layout {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 16px;
-  padding: 16px;
+  display: grid; grid-template-columns: 1fr 300px;
+  gap: 16px; padding: 16px;
 }
-
-@media (max-width: 800px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-}
+@media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
 
 .arena {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 10px;
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px;
 }
 
 .card {
-  background: #1d2331;
-  border-radius: 8px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  position: relative;
+  background: #1d2331; border-radius: 8px; overflow: hidden;
+  display: flex; flex-direction: column; position: relative;
+  cursor: pointer; transition: transform .08s ease;
 }
+.card:active { transform: translateY(1px); }
 
-/* 不固定比例，依原始比例顯示 */
 .card img {
   width: 100%;
-  height: auto;          /* 自動依比例縮放 */
-  object-fit: contain;   /* 保留完整圖片 */
-  background: #000;      /* 載入前背景 */
+  height: auto;          /* 依原始比例顯示 */
+  object-fit: contain;   /* 不裁切，保留完整圖片（可能有黑邊） */
+  background: #000;
   display: block;
 }
 
-.card-info {
-  padding: 8px;
-}
-
-.pick-btn {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  background: #42d392;
-  border: none;
-  border-radius: 4px;
-  padding: 6px 10px;
-  cursor: pointer;
-}
+.card-info { padding: 8px; }
+.vs { align-self: center; font-weight: 800; opacity: .8; }
 
 .sidebar {
-  background: #1d2331;
-  border-radius: 8px;
-  padding: 10px;
+  background: #1d2331; border-radius: 8px; padding: 10px;
 }
 
-.champion ol {
-  padding-left: 20px;
+/* 最終排名清單（含縮圖） */
+.rank-list {
+  list-style: decimal inside;
+  padding: 0; margin: 8px 0 0 0;
 }
+.rank-list li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.rank-list li:last-child { border-bottom: none; }
+.rank-list img.thumb {
+  width: 48px; height: 48px;
+  object-fit: cover; border-radius: 6px; background:#000; display:block;
+}
+
+.screenshot .actions,
+.screenshot .topbar { display: none; }
