@@ -119,11 +119,17 @@ function buildRoundFrom(ids){
   return pairs;
 }
 function seedFirstRound(){
-  const ids = shuffle(state.entries.map(e=>e.id)); // 移除 shuffle 可固定首輪對手
-  state.rounds = [ buildRoundFrom(ids) ];
-  state.roundIdx = 0; state.matchIdx = 0;
-  state.nextSeeds = []; state.history = []; state.finalRanking = [];
+  const ids = shuffle(state.entries.map(e=>e.id)); // 要固定首輪就拿掉 shuffle
+  state.nextSeeds = [];                 // 先清空，讓 buildRoundFrom 能把「輪空」塞進來
+  const firstRound = buildRoundFrom(ids);
+  state.rounds = [ firstRound ];
+  state.roundIdx = 0;
+  state.matchIdx = 0;
+  state.history = [];
+  state.finalRanking = [];
+  // 注意：這裡「不要」再把 state.nextSeeds 清掉！
 }
+
 
 /* ===== Lightweight snapshots (fix OOM) ===== */
 function snapshotOf(s){
