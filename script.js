@@ -37,10 +37,47 @@ function shuffle(a){
   return a;
 }
 
+/* ===== 圖片連結正規化（含 Google Drive / Dropbox） ===== */
+function normalizeImageUrl(url){
+  if(!url) return "";
+  url = url.trim();
+
+  // gdrive: /file/d/{id}/view
+  let m = url.match(/^https?:\/\/drive\.google\.com\/file\/d\/([^/]+)/i);
+  if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+
+  // gdrive: /open?id={id}
+  m = url.match(/^https?:\/\/drive\.google\.com\/open\?[^#]*\bid=([^&]+)/i);
+  if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+
+  // gdrive: /uc?id={id}[&...]
+  m = url.match(/^https?:\/\/drive\.google\.com\/uc\?([^#]+)/i);
+  if (m) {
+    const params = new URLSearchParams(m[1]);
+    const id = params.get("id");
+    if (id) return `https://drive.google.com/uc?export=view&id=${id}`;
+  }
+
+  // docs: /uc?id={id}
+  m = url.match(/^https?:\/\/docs\.google\.com\/uc\?([^#]+)/i);
+  if (m) {
+    const params = new URLSearchParams(m[1]);
+    const id = params.get("id");
+    if (id) return `https://drive.google.com/uc?export=view&id=${id}`;
+  }
+
+  // dropbox 分享：改 dl=1
+  if (/^https?:\/\/www\.dropbox\.com\//i.test(url)) {
+    if (url.includes("dl=0")) return url.replace("dl=0","dl=1");
+    if (!/[?&]dl=1\b/.test(url)) return url + (url.includes("?") ? "&dl=1" : "?dl=1");
+  }
+
+  return url;
+}
+
 /* ===== CSV / 手動清單 解析 ===== */
-// 輕量 CSV 解析：支援簡單引號（雙引號括起的欄位）
+// 期待欄位：name,img（可多欄，但只取前兩欄）；支援簡易引號
 function parseCsvText(text){
-  // 期待欄位：name,img（可多欄，但只取前兩欄）
   const lines = text.replace(/\r/g,'').split('\n').filter(x=>x.trim()!=="");
   const rows = [];
   for(const line of lines){
@@ -108,27 +145,20 @@ function safeInitPreset() {
   const sel = document.getElementById("presetSelect");
   if (!sel) { console.warn("[init] 找不到 #presetSelect"); return; }
 
-  // 先放入預設第一項
   sel.innerHTML = '<option value="">— 不使用預設（自己貼連結或輸入）—</option>';
 
-  // 偵錯輸出（如有需要可移除）
-  console.log("[init] PRESET_BANKS =", PRESET_BANKS, "type=", Array.isArray(PRESET_BANKS) ? "array" : typeof PRESET_BANKS);
-
   if (!Array.isArray(PRESET_BANKS) || PRESET_BANKS.length === 0) {
-    console.warn("[init] PRESET_BANKS 為空或不是陣列");
     const hint = document.getElementById("previewCount");
     if (hint) hint.textContent = "（沒有載到預設題庫，請確認 script.js 是否最新）";
     return;
   }
 
-  // 建立選項
   for (const b of PRESET_BANKS) {
     const opt = document.createElement("option");
     opt.value = b.id;
     opt.textContent = b.label || b.id;
     sel.appendChild(opt);
   }
-  console.log("[init] 已加入選項數量 =", PRESET_BANKS.length);
 
   async function refreshPreview(){
     const previewEl = $("#previewCount");
@@ -158,7 +188,7 @@ function safeInitPreset() {
     reloadBtn._bound = true;
   }
 
-  // 如果想預選其中一個，解除下行註解：
+  // 若想預設選某個題庫，解除註解：
   // sel.value = "xuka"; sel.dispatchEvent(new Event("change"));
 }
 
@@ -177,7 +207,6 @@ function buildRoundFrom(ids){
 }
 
 function seedFirstRound(){
-  // 以 entries index 做 id 對照
   const ids = state.entries.map((_,i)=>i);
   shuffle(ids);
   state.rounds = [ buildRoundFrom(ids) ];
@@ -191,16 +220,13 @@ function seedFirstRound(){
 
 function advanceAfterPick(){
   const r = state.rounds[state.roundIdx];
-  // 下一場
   if(state.matchIdx < r.length-1){
     state.matchIdx++;
     renderAll(); return;
   }
-  // 回合結束：產生下一輪
   const next = state.nextSeeds.slice();
   state.nextSeeds = [];
   if(next.length <= 1){
-    // 比賽全部結束（或只剩 1 人）
     const championId = next[0] ?? r[r.length-1].winnerId;
     finishTournament(championId);
   }else{
@@ -212,7 +238,6 @@ function advanceAfterPick(){
 }
 
 function finishTournament(championId){
-  // 取得決賽對手（若存在）
   const lastRound = state.rounds[state.rounds.length-1] || [];
   const finalMatch = lastRound[lastRound.length-1] || null;
   const runnerUpId = finalMatch
@@ -223,12 +248,10 @@ function finishTournament(championId){
   if(championId!=null) ranking.push(championId);
   if(runnerUpId!=null) ranking.push(runnerUpId);
 
-  // 依淘汰輪由晚到早加入其餘名次（同輪的敗者維持出場順序）
   for(let r = state.rounds.length-1; r>=0; r--){
     const losers = (state.losersByRound[r] || []).filter(id=>id!==runnerUpId);
     for(const id of losers) if(!ranking.includes(id)) ranking.push(id);
   }
-  // 如果還有沒被列入的（包含 bye 直接晉級但後來輸掉者），補上
   for(let i=0;i<state.entries.length;i++){
     if(!ranking.includes(i)) ranking.push(i);
   }
@@ -240,10 +263,11 @@ function finishTournament(championId){
 /* ===== Render ===== */
 function setImage(imgEl, title, url){
   imgEl.alt = title || "";
+  imgEl.referrerPolicy = "no-referrer";           // 某些主機擋引用時更穩
+  imgEl.onerror = () => { imgEl.removeAttribute("src"); }; // 裂圖時用文字卡片
   if(url){
-    imgEl.src = url;
+    imgEl.src = normalizeImageUrl(url);
   }else{
-    // 無圖：產生一張簡單佔位圖（透明 1x1），並用 CSS 黑底顯示名稱
     imgEl.removeAttribute("src");
   }
 }
@@ -261,12 +285,10 @@ function renderArena(){
   const r = state.rounds[state.roundIdx] || [];
   const m = r[state.matchIdx] || null;
 
-  // 最終排名區塊顯示/隱藏
   const resultShown = state.finalRanking && state.finalRanking.length>0;
   $("#championBox").hidden = !resultShown;
 
   if(!m){
-    // 沒有對戰（可能賽事結束）
     $("#cardA").style.display="none";
     $("#cardB").style.display="none";
     $(".vs").style.display="none";
@@ -295,7 +317,6 @@ function renderArena(){
 }
 
 function renderFinal(){
-  // 秀出最終排名
   const box = $("#championBox");
   const ol = $("#rankList");
   ol.innerHTML = "";
@@ -306,7 +327,6 @@ function renderFinal(){
   });
   box.hidden = false;
 
-  // 清空主畫面
   $("#cardA").style.display="none";
   $("#cardB").style.display="none";
   $(".vs").style.display="none";
@@ -319,11 +339,9 @@ function renderAll(){ renderArena(); }
 
 /* ===== 事件綁定 ===== */
 function bindTournamentEvents(){
-  // 點卡片 = 選擇
   $("#cardA").addEventListener("click", ()=> pickWinner("A"));
   $("#cardB").addEventListener("click", ()=> pickWinner("B"));
 
-  // 鍵盤：左右鍵/ A、B 鍵 選擇
   document.addEventListener("keydown", (e)=>{
     if(e.key==="ArrowLeft" || e.key.toLowerCase()==="a"){ pickWinner("A"); }
     if(e.key==="ArrowRight"|| e.key.toLowerCase()==="b"){ pickWinner("B"); }
@@ -336,7 +354,6 @@ function bindTournamentEvents(){
 }
 
 function snapshot(){
-  // 只存需要的欄位，避免快照過肥
   return {
     rounds: deepClone(state.rounds),
     roundIdx: state.roundIdx,
@@ -358,12 +375,11 @@ function restore(snap){
 }
 
 function pickWinner(side){
-  if(state.finalRanking.length>0) return; // 已結束
+  if(state.finalRanking.length>0) return;
   const r = state.rounds[state.roundIdx];
   const m = r[state.matchIdx];
   if(!m) return;
 
-  // 存快照（支援 Undo）
   state.history.push(snapshot());
 
   const winnerId = side==="A" ? m.aId : m.bId;
@@ -371,7 +387,6 @@ function pickWinner(side){
   m.winnerId = winnerId;
   state.nextSeeds.push(winnerId);
 
-  // 記錄本輪敗者（用於最終排名）
   if(!state.losersByRound[state.roundIdx]) state.losersByRound[state.roundIdx]=[];
   state.losersByRound[state.roundIdx].push(loserId);
 
@@ -385,7 +400,6 @@ function doUndo(){
 }
 
 function doReset(){
-  // 回到首頁
   state = {
     entries: [], rounds: [], roundIdx:0, matchIdx:0,
     nextSeeds: [], losersByRound:{}, finalRanking:[], history:[]
