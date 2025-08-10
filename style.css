@@ -132,13 +132,22 @@ textarea{
 .card:hover{ transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.25); }
 .card:active{ transform: translateY(1px); }
 
+/* 取代舊的 .card img 區塊 */
 .card img{
   width: 100%;
-  height: 360px;
-  object-fit: contain;   /* 不裁圖，保留完整圖片（可能有黑邊） */
+  /* 固定直式 3:4 的框 */
+  aspect-ratio: 3 / 4;
+  height: auto;
+
+  /* 圖片填滿，不留黑邊（必要時會裁掉邊緣） */
+  object-fit: cover;
+  object-position: center;
+
   background: #000;
   border-radius: 8px;
+  display: block; /* 消除底部行內圖片空隙 */
 }
+
 .card-info{ padding: 0 6px 8px; }
 .card-info h2{ font-size: 18px; margin: 0; }
 
