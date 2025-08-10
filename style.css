@@ -116,6 +116,7 @@ html, body {
   gap: 12px;
   height: calc(100vh - 80px); /* 減去 topbar 高度，避免超出 */
   align-items: center;
+  justify-content: center;
 }
 .vs{
   align-self: center;
@@ -136,6 +137,8 @@ html, body {
   flex-direction: column;
   gap: 8px;
   transition: transform .05s ease-out, box-shadow .1s ease-out;
+  flex: 1; /* 平均分配空間 */
+  max-height: 80vh; /* 整張卡片最高佔螢幕 80% */
 }
 .card:hover{ transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.25); }
 .card:active{ transform: translateY(1px); }
@@ -146,7 +149,6 @@ html, body {
   /* 固定直式 3:4 的框 */
   aspect-ratio: 3 / 4;
   height: auto;
-  max-height: 70vh; /* 限制圖片高度 */
 
   /* 圖片填滿，不留黑邊（必要時會裁掉邊緣） */
   object-fit: cover;
