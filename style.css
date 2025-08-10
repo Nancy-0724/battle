@@ -173,27 +173,54 @@ html, body {
 }
 
 /* 手機版優化：一定放在檔案最後，覆蓋前面設定 */
+/* 手機優化 + 排名顯示優化 */
 @media (max-width: 600px) {
-  .arena {
-    display: flex !important;  /* 強制覆蓋 grid */
+  /* 整個版面單欄 */
+  .layout {
+    display: flex !important;
     flex-direction: column;
-    align-items: center;
-    height: auto;
+    padding: 8px;
   }
 
+  /* 對戰區上下直排 */
+  .arena {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    height: auto !important;
+  }
+
+  /* VS 置中 */
   .vs {
     order: 2;
     font-size: 1.5rem;
     margin: 8px 0;
   }
 
+  /* 卡片放大 */
   .card {
     width: 90%;
     max-width: 400px;
     max-height: none;
   }
 
+  /* 圖片縮放避免擠掉名字 */
   .card img {
     max-height: 60vh;
   }
+
+  /* 排名區域全寬顯示 */
+  .sidebar {
+    width: 100%;
+    margin-top: 16px;
+  }
 }
+
+/* 排名顯示時，隱藏對戰區，讓排名直接在上方 */
+#tournament.finished .arena {
+  display: none !important;
+}
+#tournament.finished .sidebar {
+  width: 100%;
+}
+
