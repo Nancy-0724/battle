@@ -292,7 +292,7 @@ function finishCurrentBracket(finalWinnerId){
   }
 }
 
-/* ===== UI（最終排名＝序號(自帶) + 🥇/🥈/🥉 + 小縮圖 + 名稱） ===== */
+/* ===== UI（最終排名＝數字 + 🥇/🥈/🥉 + 小縮圖 + 名稱） ===== */
 function renderArena(){
   const p = currentPair();
   if (!p){
@@ -305,6 +305,10 @@ function renderArena(){
     const ol = $("#rankList");
     ol.innerHTML = "";
 
+    // 確保不使用瀏覽器序號，避免和我們手動數字衝突
+    ol.style.listStyle = "none";
+    ol.style.paddingLeft = "0";
+
     state.finalRanking.forEach((id, i)=>{
       const e = state.entries.find(x=>x.id===id);
       if(!e) return;
@@ -315,12 +319,18 @@ function renderArena(){
       li.style.gap = "8px";
       li.style.margin = "6px 0";
 
-      // 🥇/🥈/🥉
-      const medal = document.createElement("span");
-      medal.textContent = medalFor(i);
-      medal.style.width = "1.4em";
-      medal.style.display = "inline-block";
-      medal.style.textAlign = "center";
+      // 手動數字
+      const num = document.createElement("span");
+      num.textContent = `${i+1}.`;
+      num.style.width = "2.2em";
+      num.style.textAlign = "right";
+      num.style.fontWeight = "700";
+
+      // 🥇/🥈/🥉（只有前三名顯示）
+      const medalSpan = document.createElement("span");
+      medalSpan.textContent = medalFor(i);
+      medalSpan.style.width = "1.2em";
+      medalSpan.style.textAlign = "center";
 
       // 小縮圖（40x40）
       const img = document.createElement("img");
@@ -335,8 +345,8 @@ function renderArena(){
       const nameSpan = document.createElement("span");
       nameSpan.textContent = e.name;
 
-      // 不再手動加 "1."、"2."，避免和 <ol> 的序號重複
-      li.appendChild(medal);
+      li.appendChild(num);
+      li.appendChild(medalSpan);
       li.appendChild(img);
       li.appendChild(nameSpan);
       ol.appendChild(li);
