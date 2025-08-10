@@ -7,16 +7,30 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Setup：貼 CSV 或手動輸入清單 -->
+  <!-- Setup：選題庫 or 自行輸入 -->
   <section id="setup" class="setup-screen">
     <h1>⚔️最愛BATTLE🏆</h1>
+
+    <label for="presetSelect">預設題庫（選填）</label>
+    <select id="presetSelect">
+      <option value="">— 不使用預設（自己貼連結或輸入）—</option>
+    </select>
+    <small id="presetHint" class="muted">選擇預設題庫後可直接開始</small>
+    <div id="previewRow" class="preview-row">
+      <span id="previewCount" class="muted"></span>
+      <button id="reloadPreviewBtn" class="btn ghost" type="button">重整預覽</button>
+    </div>
+
     <p>貼 Google Sheet CSV 連結（<code>.../pub?output=csv</code>），或直接輸入清單：</p>
     <input id="csvUrl" type="url" placeholder="CSV 連結（選填）" />
     <textarea id="manualList" placeholder="每行一筆，格式：名稱, 圖片網址"></textarea>
-    <button id="startBtn">開始比賽</button>
+
+    <div class="setup-actions">
+      <button id="startBtn" class="btn primary">開始比賽</button>
+    </div>
   </section>
 
-  <!-- Tournament：開始對戰 -->
+  <!-- Tournament -->
   <section id="tournament" class="hidden">
     <header class="topbar">
       <div class="title">單淘汰排行</div>
