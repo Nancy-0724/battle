@@ -86,16 +86,49 @@ function parseManualList(text){
   return out;
 }
 
-/* ===== Setup 下拉：建立選項與預覽 ===== */
-function initPresetSelect(){
-  const sel = $("#presetSelect");
+/* ===== 預覽輔助 ===== */
+async function tryPreviewAndCount(src){
+  try{
+    if(src.type==="csv"){
+      const r = await fetch(src.url,{cache:"no-store"});
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const txt = await r.text();
+      const rows = parseCsvText(txt);
+      return rows.length;
+    }else if(src.type==="text"){
+      const rows = parseManualList(src.text || "");
+      return rows.length;
+    }
+  }catch(_e){}
+  return 0;
+}
+
+/* ===== Setup 下拉：安全初始化與預覽 ===== */
+function safeInitPreset() {
+  const sel = document.getElementById("presetSelect");
+  if (!sel) { console.warn("[init] 找不到 #presetSelect"); return; }
+
+  // 先放入預設第一項
   sel.innerHTML = '<option value="">— 不使用預設（自己貼連結或輸入）—</option>';
-  PRESET_BANKS.forEach(b=>{
+
+  // 偵錯輸出（如有需要可移除）
+  console.log("[init] PRESET_BANKS =", PRESET_BANKS, "type=", Array.isArray(PRESET_BANKS) ? "array" : typeof PRESET_BANKS);
+
+  if (!Array.isArray(PRESET_BANKS) || PRESET_BANKS.length === 0) {
+    console.warn("[init] PRESET_BANKS 為空或不是陣列");
+    const hint = document.getElementById("previewCount");
+    if (hint) hint.textContent = "（沒有載到預設題庫，請確認 script.js 是否最新）";
+    return;
+  }
+
+  // 建立選項
+  for (const b of PRESET_BANKS) {
     const opt = document.createElement("option");
     opt.value = b.id;
     opt.textContent = b.label || b.id;
     sel.appendChild(opt);
-  });
+  }
+  console.log("[init] 已加入選項數量 =", PRESET_BANKS.length);
 
   async function refreshPreview(){
     const previewEl = $("#previewCount");
@@ -119,29 +152,14 @@ function initPresetSelect(){
     }
   });
 
-  $("#reloadPreviewBtn").addEventListener("click", ()=>{
-    if(sel.value) sel.dispatchEvent(new Event("change"));
-  });
+  const reloadBtn = document.getElementById("reloadPreviewBtn");
+  if (reloadBtn && !reloadBtn._bound) {
+    reloadBtn.addEventListener("click", () => sel.value && sel.dispatchEvent(new Event("change")));
+    reloadBtn._bound = true;
+  }
 
   // 如果想預選其中一個，解除下行註解：
   // sel.value = "xuka"; sel.dispatchEvent(new Event("change"));
-}
-
-/* ===== 預覽輔助 ===== */
-async function tryPreviewAndCount(src){
-  try{
-    if(src.type==="csv"){
-      const r = await fetch(src.url,{cache:"no-store"});
-      if(!r.ok) throw new Error("HTTP "+r.status);
-      const txt = await r.text();
-      const rows = parseCsvText(txt);
-      return rows.length;
-    }else if(src.type==="text"){
-      const rows = parseManualList(src.text || "");
-      return rows.length;
-    }
-  }catch(_e){}
-  return 0;
 }
 
 /* ===== 對戰配表 ===== */
@@ -427,5 +445,5 @@ document.getElementById("startBtn").addEventListener("click", async ()=>{
   renderAll();
 });
 
-/* ===== 初始化 ===== */
-initPresetSelect();
+/* ===== 初始化（確保 DOM 準備好才填選單） ===== */
+window.addEventListener("DOMContentLoaded", safeInitPreset);
