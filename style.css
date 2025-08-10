@@ -156,6 +156,7 @@ html, body {
 
   background: #000;
   border-radius: 8px;
+  max-height: calc(100vh - 200px); 
   display: block; /* 消除底部行內圖片空隙 */
 }
 
