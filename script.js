@@ -18,7 +18,6 @@ const PRESET_BANKS = [
 ];
 
 /* ===== Config 開關 ===== */
-// 名次賽是否固定配位（不洗牌）。主賽仍維持洗牌。
 const FIXED_SEED_FOR_PLACEMENT = true;
 
 /* ===== State ===== */
@@ -31,17 +30,15 @@ let state = {
   nextSeeds: [],
   history: [],
   finalRanking: [],
-  // Plan B: placement brackets
   phaseLabel: "主賽",
   placementQueue: [],   // [{ids:[], label:""}]
-  roundLosers: {}       // { roundIdx: [id,id,...] } for the current bracket
+  roundLosers: {}       // { roundIdx: [id,id,...] }
 };
 
 /* ===== Utils ===== */
 const $ = s => document.querySelector(s);
 const shuffle = a => a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
 const deepClone = o => JSON.parse(JSON.stringify(o));
-function slug(s){ return s.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w\u4E00-\u9FFF]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase(); }
 const medalFor = i => (i===0?'🥇':i===1?'🥈':i===2?'🥉':''); // 前三名獎牌
 
 /* ===== Google Drive image helpers（不轉小寫、先縮圖後 uc） ===== */
@@ -51,11 +48,9 @@ function isDriveUrl(u){
 }
 function extractDriveId(u){
   if(!u) return "";
-  const s = String(u).trim();                // 不轉小寫！Drive ID 區分大小寫
-  // 1) ?id=FILEID
+  const s = String(u).trim(); // 不轉小寫！Drive ID 區分大小寫
   const m1 = s.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
   if (m1) return m1[1];
-  // 2) /file/d/FILEID 或 /d/FILEID
   const m2 = s.match(/\/(?:file\/)?d\/([A-Za-z0-9_-]{10,})/);
   if (m2) return m2[1];
   return "";
@@ -202,7 +197,6 @@ function undo(){
 function enqueuePlacement(ids, label){
   if(!ids || ids.length<1) return;
   if(ids.length===1){
-    // 單人，直接成為下一名次
     state.finalRanking.push(ids[0]);
   }else{
     state.placementQueue.push({ ids: ids.slice(), label });
@@ -228,7 +222,7 @@ function roundNameBySize(n){
   return n+" 強";
 }
 
-/* ===== Progress（完全沿用你原本的邏輯） ===== */
+/* ===== Progress（沿用你的邏輯） ===== */
 function pick(side){
   const round = state.rounds[state.roundIdx];
   const match = round[state.matchIdx];
@@ -240,19 +234,15 @@ function pick(side){
   pushSnapshot();
   match.winnerId = winnerId;
 
-  // 記錄本輪敗者（Plan B 用於後續名次賽）
   (state.roundLosers[state.roundIdx] ||= []).push(loserId);
 
-  // 推進
   state.nextSeeds.push(winnerId);
   state.matchIdx++;
 
-  // 該輪完了？
   if (state.matchIdx >= round.length){
     let nextIds = state.nextSeeds.slice();
     state.nextSeeds = [];
 
-    // 名次賽固定配位：不洗牌；主賽仍洗牌
     const isPlacement = String(state.phaseLabel || "").startsWith("名次賽");
     if (!(FIXED_SEED_FOR_PLACEMENT && isPlacement)) {
       nextIds = shuffle(nextIds);
@@ -261,7 +251,6 @@ function pick(side){
     const nextRound = buildRoundFrom(nextIds);
 
     if (nextRound.length === 0){
-      // 這個 bracket 結束 → 依你原本邏輯產生名次賽並繼續
       finishCurrentBracket(winnerId);
       return;
     }
@@ -281,8 +270,8 @@ function finishCurrentBracket(finalWinnerId){
   state.finalRanking.push(finalWinnerId);
   if(runnerUpId) state.finalRanking.push(runnerUpId);
 
-  // 依倒序把各輪敗者群組成名次賽，逐一排入 queue（完全照你原本的設計）
-  let baseRankStart = state.finalRanking.length + 1; // 下一個名次開始
+  // 依倒序把各輪敗者群組成名次賽，逐一排入 queue
+  let baseRankStart = state.finalRanking.length + 1;
   for(let r = state.rounds.length - 2; r>=0; r--){
     const group = (state.roundLosers[r] || []).slice(); // 保留原配位順序
     if(group.length===0) continue;
@@ -295,7 +284,6 @@ function finishCurrentBracket(finalWinnerId){
   state.rounds = []; state.roundIdx = 0; state.matchIdx = 0;
   state.nextSeeds = []; state.roundLosers = {};
 
-  // 還有待辦的名次賽就開打；否則結束
   if(state.placementQueue.length>0){
     startNextPlacement();
   }else{
@@ -304,44 +292,50 @@ function finishCurrentBracket(finalWinnerId){
   }
 }
 
-/* ===== UI（最終排名呈現保留你原本的樣式：名次＋獎牌＋縮圖＋名稱） ===== */
+/* ===== UI（最終排名＝序號(自帶) + 🥇/🥈/🥉 + 小縮圖 + 名稱） ===== */
 function renderArena(){
   const p = currentPair();
   if (!p){
-    // 結束或無進行中的 bracket
     $("#cardA").style.display="none"; $("#cardB").style.display="none"; $(".vs").style.display="none";
     $("#roundLabel").textContent= state.phaseLabel || "已結束";
     $("#roundProgress").textContent="—"; $("#remaining").textContent="—";
 
-    // 顯示 sidebar（最終排名）
     const box=$("#championBox");
     box.hidden=false;
     const ol = $("#rankList");
-    ol.innerHTML = ""; // 清空
+    ol.innerHTML = "";
 
     state.finalRanking.forEach((id, i)=>{
       const e = state.entries.find(x=>x.id===id);
       if(!e) return;
+
       const li = document.createElement("li");
+      li.style.display = "flex";
+      li.style.alignItems = "center";
+      li.style.gap = "8px";
+      li.style.margin = "6px 0";
 
-      const rankLabel = document.createElement("span");
-      rankLabel.textContent = `${i+1}. `;
-      rankLabel.style.fontWeight = "700";
-      rankLabel.style.minWidth = "2.5em";
-
+      // 🥇/🥈/🥉
       const medal = document.createElement("span");
       medal.textContent = medalFor(i);
-      medal.style.marginRight = medal.textContent ? "6px" : "0";
+      medal.style.width = "1.4em";
+      medal.style.display = "inline-block";
+      medal.style.textAlign = "center";
 
+      // 小縮圖（40x40）
       const img = document.createElement("img");
-      img.className = "thumb";
-      img.src = preferredThumbUrl(e.img, 200);
+      img.src = preferredThumbUrl(e.img, 120);
       img.alt = e.name;
+      img.style.width = "40px";
+      img.style.height = "40px";
+      img.style.objectFit = "cover";
+      img.style.objectPosition = "center";
+      img.style.borderRadius = "4px";
 
       const nameSpan = document.createElement("span");
       nameSpan.textContent = e.name;
 
-      li.appendChild(rankLabel);
+      // 不再手動加 "1."、"2."，避免和 <ol> 的序號重複
       li.appendChild(medal);
       li.appendChild(img);
       li.appendChild(nameSpan);
@@ -372,7 +366,6 @@ function renderAll(){ renderArena(); }
 
 /* ===== Bind ===== */
 function bindTournamentEvents(){
-  // 直接點整張卡片就選擇
   $("#cardA").addEventListener("click", ()=>pick("A"));
   $("#cardB").addEventListener("click", ()=>pick("B"));
 
@@ -391,7 +384,7 @@ function bindTournamentEvents(){
 /* =====（可選）預設題庫：如果 index.html 有下拉，就自動填入並支援預覽 ===== */
 function initPresetSelectIfAny(){
   const sel = document.getElementById("presetSelect");
-  if(!sel) return; // 舊版頁面沒有下拉就略過
+  if(!sel) return;
 
   sel.innerHTML = '<option value="">— 不使用預設（自己貼連結或輸入）—</option>';
   (PRESET_BANKS || []).forEach(b=>{
