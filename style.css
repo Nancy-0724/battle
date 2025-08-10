@@ -114,6 +114,9 @@ html, body {
   height: calc(100vh - 80px);
   align-items: center;
   justify-content: center;
+  max-width: 1200px; /* 限制總寬度，避免左右空白太大 */
+  margin: 0 auto;
+
 }
 .vs{
   align-self: center;
@@ -135,7 +138,8 @@ html, body {
   gap: 8px;
   transition: transform .05s ease-out, box-shadow .1s ease-out;
   flex: 1;
-  max-height: 80vh;
+  max-height: 100%;
+  height: 100%;
 }
 .card:hover{ transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.25); }
 .card:active{ transform: translateY(1px); }
@@ -143,6 +147,7 @@ html, body {
 .card img{
   width: 100%;
   aspect-ratio: 3 / 4; /* 固定比例 */
+  flex-grow: 1;
   height: auto;
   object-fit: cover;
   object-position: center;
@@ -152,7 +157,11 @@ html, body {
   display: block;
 }
 
-.card-info{ padding: 0 6px 8px; }
+.card-info{ 
+  flex-shrink: 0;
+  text-align: center;
+  padding: 0 6px 8px; 
+}
 .card-info h2{ font-size: 18px; margin: 0; }
 
 /* Sidebar */
@@ -173,7 +182,6 @@ html, body {
 }
 
 /* 手機版優化：一定放在檔案最後，覆蓋前面設定 */
-/* 手機優化 + 排名顯示優化 */
 @media (max-width: 600px) {
   /* 整個版面單欄 */
   .layout {
@@ -187,7 +195,7 @@ html, body {
     display: flex !important;
     flex-direction: column;
     align-items: center;
-    height: auto !important;
+    height: calc(100vh - 80px); /* 扣掉 topbar 高度 */
   }
 
   /* VS 置中 */
@@ -199,16 +207,23 @@ html, body {
 
   /* 卡片放大 */
   .card {
-    width: 90%;
-    max-width: 400px;
+    flex: 1; /* 平均分配高度 */
     max-height: none;
+    display: flex;
+    flex-direction: column;
   }
 
   /* 圖片縮放避免擠掉名字 */
   .card img {
-    max-height: 60vh;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    flex-grow: 1; /* 讓圖片自動撐滿卡片空間 */
+    object-fit: cover;
   }
-
+  .card-info {
+    flex-shrink: 0; /* 名稱不被擠壓 */
+    text-align: center;
+  }
   /* 排名區域全寬顯示 */
   .sidebar {
     width: 100%;
