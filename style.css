@@ -109,21 +109,27 @@ html, body {
 /* 手機優化：螢幕寬度 <= 600px 時改成直排 */
 @media (max-width: 600px) {
   .arena {
-    grid-template-columns: 1fr; /* 單欄直排 */
-    gap: 20px;
+    display: flex;             /* 改成 flex 直排 */
+    flex-direction: column;
+    align-items: center;
   }
 
   .vs {
-    order: -1; /* "VS" 放在第一張卡片和第二張卡片中間 */
-    text-align: center;
+    order: 2;                   /* 放在兩張卡片之間 */
     font-size: 1.5rem;
-    padding: 8px 0;
+    margin: 8px 0;
+  }
+
+  .card {
+    width: 90%;                 /* 讓圖片更大 */
+    max-width: 400px;           /* 避免太寬 */
   }
 
   .card img {
-    max-height: 60vh; /* 避免圖片過高 */
+    max-height: 60vh;           /* 避免圖片過高 */
   }
 }
+
 
 
 /* Arena */
