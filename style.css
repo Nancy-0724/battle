@@ -105,9 +105,26 @@ html, body {
   gap: 16px;
   padding: 16px;
 }
-@media (max-width: 960px){
-  .layout{ grid-template-columns: 1fr; }
+
+/* 手機優化：螢幕寬度 <= 600px 時改成直排 */
+@media (max-width: 600px) {
+  .arena {
+    grid-template-columns: 1fr; /* 單欄直排 */
+    gap: 20px;
+  }
+
+  .vs {
+    order: -1; /* "VS" 放在第一張卡片和第二張卡片中間 */
+    text-align: center;
+    font-size: 1.5rem;
+    padding: 8px 0;
+  }
+
+  .card img {
+    max-height: 60vh; /* 避免圖片過高 */
+  }
 }
+
 
 /* Arena */
 .arena{
