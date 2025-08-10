@@ -290,7 +290,6 @@ function finishCurrentBracket(finalWinnerId){
     state.phaseLabel = "已結束";
     renderAll();
   }
-  document.getElementById("tournament").classList.add("finished");
 }
 
 /* ===== UI（最終排名＝數字 + 🥇/🥈/🥉 + 小縮圖 + 名稱） ===== */
