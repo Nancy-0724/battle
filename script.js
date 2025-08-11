@@ -6,6 +6,7 @@ window.addEventListener('resize', updateVH);
 window.addEventListener('orientationchange', updateVH);
 updateVH();
 
+/* ===== 量測 Topbar 實際高度（避免預估不準） ===== */
 function updateTopbarH() {
   const tb = document.querySelector('.topbar');
   if (tb) document.documentElement.style.setProperty('--topbar-h', `${tb.offsetHeight}px`);
@@ -14,7 +15,6 @@ window.addEventListener('resize', updateTopbarH);
 window.addEventListener('orientationchange', updateTopbarH);
 window.addEventListener('DOMContentLoaded', updateTopbarH);
 updateTopbarH();
-
 
 /* ===== 預設題庫（照你要的順序：男豆 → 女豆 → 旴卡） ===== */
 const PRESET_BANKS = [
@@ -27,13 +27,12 @@ const PRESET_BANKS = [
     id: "kpop-female",
     label: "KPOP女豆BATTLE",
     url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx4T46KlhDjb5LpnkTDjbF2_jQ_3aRK0SGXjfW2szL8oBoCmW2a-YMHpl8uSxHNqW_KMa09Y8KAqmi/pub?gid=1697531857&single=true&output=csv"
-  }
-  /*,
-  {
+  },
+  /*{
     id: "xuka",
     label: "旴卡BATTLE",
     url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx4T46KlhDjb5LpnkTDjbF2_jQ_3aRK0SGXjfW2szL8oBoCmW2a-YMHpl8uSxHNqW_KMa09Y8KAqmi/pub?gid=0&single=true&output=csv"
-  }*/
+  }/*
 ];
 
 /* ===== Config 開關 ===== */
@@ -392,6 +391,59 @@ function renderArena(){
   $("#remaining").textContent = size;
 }
 function renderAll(){ renderArena(); }
+
+/* ===== 視窗自適應：把每張圖在 3:4 下塞進一頁，不超出 ===== */
+function fitCards() {
+  const arena = document.querySelector('.arena');
+  if (!arena || getComputedStyle(arena).display === 'none') return;
+
+  const arenaH = arena.getBoundingClientRect().height; // 已扣掉 topbar/padding 的可用高度
+  const vs = arena.querySelector('.vs');
+  const vsH = vs ? vs.getBoundingClientRect().height : 0;
+
+  const cs = getComputedStyle(arena);
+  const rowGap = parseFloat(cs.rowGap || '0') || 0;
+  const isMobile = window.matchMedia('(max-width: 640px)').matches;
+
+  const perCardTotalH = isMobile ? (arenaH - vsH - rowGap) / 2 : arenaH;
+
+  ['cardA', 'cardB'].forEach(id => {
+    const card = document.getElementById(id);
+    if (!card) return;
+    const img = card.querySelector('img');
+    const title = card.querySelector('.card-info');
+
+    const ccs = getComputedStyle(card);
+    const cPadTop = parseFloat(ccs.paddingTop || '0');
+    const cPadBot = parseFloat(ccs.paddingBottom || '0');
+    const cBorderTop = parseFloat(ccs.borderTopWidth || '0');
+    const cBorderBot = parseFloat(ccs.borderBottomWidth || '0');
+    const paddingBorder = cPadTop + cPadBot + cBorderTop + cBorderBot;
+
+    const titleH = title ? title.getBoundingClientRect().height : 0;
+
+    // 卡片圖片可用的最大高度（扣掉標題/內距/間隙）
+    const maxImgH = Math.max(0, perCardTotalH - paddingBorder - titleH - 8 /* card gap 近似 */);
+
+    // 依 3:4 計算：圖片寬度不能超過卡片內部寬
+    const cardInnerW = card.clientWidth - parseFloat(ccs.paddingLeft||'0') - parseFloat(ccs.paddingRight||'0');
+    const heightByAspect = cardInnerW * (4/3);
+    const finalImgH = Math.min(maxImgH, heightByAspect);
+
+    img.style.height = `${finalImgH}px`;
+    img.style.width  = `${finalImgH * (3/4)}px`;
+    img.style.margin = '0 auto';
+  });
+}
+
+// 視窗/旋轉改變時重算
+window.addEventListener('resize', fitCards);
+window.addEventListener('orientationchange', fitCards);
+document.addEventListener('DOMContentLoaded', () => setTimeout(fitCards, 0));
+
+// 在每次畫面重繪後也重算
+const _renderAll = renderAll;
+renderAll = function(){ _renderAll(); fitCards(); };
 
 /* ===== Bind ===== */
 function bindTournamentEvents(){
