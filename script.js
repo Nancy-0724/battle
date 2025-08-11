@@ -436,14 +436,45 @@ function fitCards() {
   });
 }
 
-// 視窗/旋轉改變時重算
-window.addEventListener('resize', fitCards);
-window.addEventListener('orientationchange', fitCards);
-document.addEventListener('DOMContentLoaded', () => setTimeout(fitCards, 0));
+/* === 穩定首屏：延後＆連續重算 fitCards，避免首刷高度不準 === */
+let fitRAF = 0, fitTimer = 0;
+function scheduleFitCards(times = 3, delay = 0){
+  if (fitRAF) cancelAnimationFrame(fitRAF);
+  if (fitTimer) clearTimeout(fitTimer);
 
-// 在每次畫面重繪後也重算
-const _renderAll = renderAll;
-renderAll = function(){ _renderAll(); fitCards(); };
+  const run = (left) => {
+    fitCards();
+    if (left > 0) fitRAF = requestAnimationFrame(() => run(left - 1));
+  };
+  fitTimer = setTimeout(() => run(times), delay);
+}
+
+window.addEventListener('load', () => {
+  updateVH();
+  updateTopbarH();
+  scheduleFitCards(4, 0);
+});
+window.addEventListener('resize', () => scheduleFitCards(2, 0));
+window.addEventListener('orientationchange', () => scheduleFitCards(3, 0));
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') scheduleFitCards(2, 50);
+});
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => scheduleFitCards(3, 0));
+}
+['imgA','imgB'].forEach(id=>{
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('load', () => scheduleFitCards(2, 0), { once:false });
+});
+
+// 取代原本的 monkey patch：每次重繪後排隊重算
+const __renderAll = renderAll;
+renderAll = function(){
+  __renderAll();
+  scheduleFitCards(2, 0);
+};
+
+
 
 /* ===== Bind ===== */
 function bindTournamentEvents(){
@@ -547,9 +578,11 @@ document.getElementById("startBtn").addEventListener("click", async ()=>{
 
   state.entries=deepClone(entries);
   seedFirstRound();
-  $("#setup").classList.add("hidden");
-  $("#tournament").classList.remove("hidden");
-  bindTournamentEvents(); renderAll();
+$("#setup").classList.add("hidden");
+$("#tournament").classList.remove("hidden");
+bindTournamentEvents(); renderAll();
+scheduleFitCards(4, 0); // ⬅️ 新增：顯示後再穩定重算一次
+
 });
 
 /* ===== 初始化 ===== */
