@@ -586,8 +586,13 @@ document.getElementById("startBtn").addEventListener("click", async ()=>{
   seedFirstRound();
 $("#setup").classList.add("hidden");
 $("#tournament").classList.remove("hidden");
-bindTournamentEvents(); renderAll();
-scheduleFitCards([0, 60, 250], 3); // ⬅️ 新增：顯示後再穩定重算一次
+bindTournamentEvents();
+renderAll();
+
+// 關鍵：等下一個動畫幀再跑 fitCards，多次保險
+requestAnimationFrame(() => {
+  scheduleFitCards([0, 60, 250], 3);
+});
 
 });
 
