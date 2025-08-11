@@ -587,7 +587,7 @@ document.getElementById("startBtn").addEventListener("click", async ()=>{
 $("#setup").classList.add("hidden");
 $("#tournament").classList.remove("hidden");
 bindTournamentEvents(); renderAll();
-scheduleFitCards(4, 0); // ⬅️ 新增：顯示後再穩定重算一次
+scheduleFitCards([0, 60, 250], 3); // ⬅️ 新增：顯示後再穩定重算一次
 
 });
 
