@@ -436,43 +436,49 @@ function fitCards() {
   });
 }
 
-/* === 穩定首屏：延後＆連續重算 fitCards，避免首刷高度不準 === */
-let fitRAF = 0, fitTimer = 0;
-function scheduleFitCards(times = 3, delay = 0){
+/* === 穩定首屏（強化版）：多次延後＋多幀重算 fitCards === */
+let fitRAF = 0, fitTimers = [];
+function scheduleFitCards(bursts = [0, 60, 250], frames = 3){
   if (fitRAF) cancelAnimationFrame(fitRAF);
-  if (fitTimer) clearTimeout(fitTimer);
+  fitTimers.forEach(t => clearTimeout(t));
+  fitTimers = [];
 
-  const run = (left) => {
+  const runFrames = (n) => {
     fitCards();
-    if (left > 0) fitRAF = requestAnimationFrame(() => run(left - 1));
+    if (n > 0) fitRAF = requestAnimationFrame(() => runFrames(n - 1));
   };
-  fitTimer = setTimeout(() => run(times), delay);
+
+  bursts.forEach(delay => {
+    fitTimers.push(setTimeout(() => runFrames(frames), delay));
+  });
 }
 
+// 重要生命週期：保險重算
 window.addEventListener('load', () => {
   updateVH();
   updateTopbarH();
-  scheduleFitCards(4, 0);
+  scheduleFitCards([0, 60, 250], 4);
 });
-window.addEventListener('resize', () => scheduleFitCards(2, 0));
-window.addEventListener('orientationchange', () => scheduleFitCards(3, 0));
+window.addEventListener('resize', () => scheduleFitCards([0], 2));
+window.addEventListener('orientationchange', () => scheduleFitCards([0, 60], 3));
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') scheduleFitCards(2, 50);
+  if (document.visibilityState === 'visible') scheduleFitCards([0, 60], 2);
 });
 if (document.fonts && document.fonts.ready) {
-  document.fonts.ready.then(() => scheduleFitCards(3, 0));
+  document.fonts.ready.then(() => scheduleFitCards([0], 3));
 }
 ['imgA','imgB'].forEach(id=>{
   const el = document.getElementById(id);
-  if (el) el.addEventListener('load', () => scheduleFitCards(2, 0), { once:false });
+  if (el) el.addEventListener('load', () => scheduleFitCards([0], 2), { once:false });
 });
 
-// 取代原本的 monkey patch：每次重繪後排隊重算
+// 每次重繪後也排重算（取代原本的 monkey patch）
 const __renderAll = renderAll;
 renderAll = function(){
   __renderAll();
-  scheduleFitCards(2, 0);
+  scheduleFitCards([0, 60], 2);
 };
+
 
 
 
