@@ -204,15 +204,19 @@ textarea{
   .vs{ align-self: center; }
 
   .card{
-    height: 100%;
-    overflow: hidden;  /* 防止圖片外溢造成滾動 */
+    /* 移除 height:100%，讓高度自適應內容 */
+    overflow: hidden;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
   }
   .card img{
-    height: 100%;      /* 以高為主，確保整張塞在一頁 */
-    width: auto;       /* 維持 3:4 時自動調寬 */
+    height: auto; /* 讓 JS fitCards 控制高度 */
+    width: auto;
+    max-width: 100%;
     aspect-ratio: 3 / 4;
     object-fit: cover;
-    margin: 0 auto;    /* 若寬度 < 卡片寬，置中 */
+    margin: 0 auto;
   }
   .card-info{
     flex: 0 0 auto;    /* 標題固定在底部高度，不擠爆圖片 */
