@@ -423,7 +423,9 @@ function fitCards() {
     const titleH = title ? title.getBoundingClientRect().height : 0;
 
     // 卡片圖片可用的最大高度（扣掉標題/內距/間隙）
-    const maxImgH = Math.max(0, perCardTotalH - paddingBorder - titleH - 8 /* card gap 近似 */);
+    const SAFE_MARGIN = 30; // 強制底部保留 30px
+    const maxImgH = Math.max(0, perCardTotalH - paddingBorder - titleH - SAFE_MARGIN);
+
 
     // 依 3:4 計算：圖片寬度不能超過卡片內部寬
     const cardInnerW = card.clientWidth - parseFloat(ccs.paddingLeft||'0') - parseFloat(ccs.paddingRight||'0');
