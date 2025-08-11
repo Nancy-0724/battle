@@ -10,8 +10,8 @@
 
   /* 高度相關（JS 會動態更新 --vh 與 --topbar-h） */
   --vh: 100vh;
-  --topbar-h: 72px;      /* 預設值；script.js 會以實際高度覆蓋 */
-  --layout-pad-v: 32px;  /* layout 垂直 padding 合計（上下各 16px） */
+  --topbar-h: 60px;      /* 預設值；script.js 會以實際高度覆蓋 */
+  --layout-pad-v: 10px;  /* layout 垂直 padding 合計（上下各 16px） */
 }
 
 * { box-sizing: border-box; }
