@@ -1,20 +1,26 @@
-/* ===== 動態 vh（行動裝置 100vh 修正） ===== */
-function updateVH() {
-  document.documentElement.style.setProperty('--vh', `${window.innerHeight}px`);
-}
-window.addEventListener('resize', updateVH);
-window.addEventListener('orientationchange', updateVH);
-updateVH();
+/* ===== 同步更新 vh 與 topbar 高度 ===== */
+function updateVHVars() {
+  const vh = window.visualViewport?.height || window.innerHeight;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
 
-/* ===== 量測 Topbar 實際高度（避免預估不準） ===== */
-function updateTopbarH() {
-  const tb = document.querySelector('.topbar');
-  if (tb) document.documentElement.style.setProperty('--topbar-h', `${tb.offsetHeight}px`);
+  const topbar = document.querySelector('.topbar');
+  if (topbar) {
+    document.documentElement.style.setProperty('--topbar-h', `${topbar.offsetHeight}px`);
+  }
 }
-window.addEventListener('resize', updateTopbarH);
-window.addEventListener('orientationchange', updateTopbarH);
-window.addEventListener('DOMContentLoaded', updateTopbarH);
-updateTopbarH();
+
+// 初始執行
+document.addEventListener('DOMContentLoaded', updateVHVars);
+
+// 視窗大小 / 方向變化時更新
+window.addEventListener('resize', updateVHVars);
+window.addEventListener('orientationchange', updateVHVars);
+
+// 行動瀏覽器 UI 動態變化時更新
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', updateVHVars);
+}
+
 
 /* ===== 預設題庫（照你要的順序：男豆 → 女豆 → 旴卡） ===== */
 const PRESET_BANKS = [
