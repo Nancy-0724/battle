@@ -192,7 +192,6 @@ textarea{
 
 /* 對戰區高度 = 視窗高 - topbar - layout 垂直 padding */
 .layout{ height: calc(var(--vh)); }
-.arena{ height: calc(var(--vh) - var(--topbar-h) - var(--layout-pad-v)); }
 
 /* 桌面版：左右並排，卡片塞滿可用高度，圖片以「高度」為主，避免超頁 */
 @media (min-width: 961px){
