@@ -122,7 +122,7 @@ textarea{
 }
 
 /* Card */
-.card{
+.card {
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -130,16 +130,20 @@ textarea{
   cursor: pointer;
   user-select: none;
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* 直排 */
   gap: 8px;
   transition: transform .05s ease-out, box-shadow .1s ease-out;
-  min-height: 0; /* 允許收縮，避免把頁面撐高 */
+  min-height: 0;
 }
-.card:hover{ transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.25); }
-.card:active{ transform: translateY(1px); }
 
-/* 直式 3:4 圖片框（不留黑邊） */
-.card img{
+/* 讓標題先出現 */
+.card-info {
+  order: -1; /* 把標題移到最上面 */
+  padding: 8px 6px 0;
+  text-align: center;
+}
+
+.card img {
   width: 100%;
   aspect-ratio: 3 / 4;
   height: auto;
@@ -147,11 +151,9 @@ textarea{
   object-position: center;
   background: #000;
   border-radius: 8px;
-  display: block; /* 消除底部行內圖片空隙 */
-  flex: 1 1 auto;
+  display: block;
 }
 
-.card-info{ padding: 0 6px 8px; }
 
 /* 標題過長：兩行截斷 + 省略 */
 .card-info h2{
