@@ -397,14 +397,15 @@ function fitCards() {
   const arena = document.querySelector('.arena');
   if (!arena || getComputedStyle(arena).display === 'none') return;
 
-  const arenaH = arena.getBoundingClientRect().height; // 已扣掉 topbar/padding 的可用高度
+  const arenaH = window.innerHeight - document.querySelector('.topbar').offsetHeight - 16 * 2; 
+  //const arenaH = arena.getBoundingClientRect().height; // 已扣掉 topbar/padding 的可用高度
   const vs = arena.querySelector('.vs');
   const vsH = vs ? vs.getBoundingClientRect().height : 0;
 
   const cs = getComputedStyle(arena);
   const rowGap = parseFloat(cs.rowGap || '0') || 0;
   const isMobile = window.matchMedia('(max-width: 640px)').matches;
-
+  const SAFE_MARGIN = 30; // 保證底部留 30px
   const perCardTotalH = isMobile ? (arenaH - vsH - rowGap) / 2 : arenaH;
 
   ['cardA', 'cardB'].forEach(id => {
@@ -423,7 +424,6 @@ function fitCards() {
     const titleH = title ? title.getBoundingClientRect().height : 0;
 
     // 卡片圖片可用的最大高度（扣掉標題/內距/間隙）
-    const SAFE_MARGIN = 30; // 強制底部保留 30px
     const maxImgH = Math.max(0, perCardTotalH - paddingBorder - titleH - SAFE_MARGIN);
 
 
