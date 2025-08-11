@@ -1,24 +1,31 @@
-/* ===== 同步更新 vh 與 topbar 高度 ===== */
-function updateVHVars() {
+function updateLayoutVars() {
+  // 取得可視高度（優先 visualViewport）
   const vh = window.visualViewport?.height || window.innerHeight;
   document.documentElement.style.setProperty('--vh', `${vh}px`);
 
+  // 取得 topbar 高度
   const topbar = document.querySelector('.topbar');
   if (topbar) {
     document.documentElement.style.setProperty('--topbar-h', `${topbar.offsetHeight}px`);
   }
+
+  // 計算主要內容高度，保證剛好一頁
+  const mainContent = document.querySelector('.main-content'); // 你的主要容器 class
+  if (mainContent) {
+    mainContent.style.height = `${vh - (topbar?.offsetHeight || 0)}px`;
+  }
 }
 
-// 初始執行
-document.addEventListener('DOMContentLoaded', updateVHVars);
+// 確保載入時就計算一次（加一點延遲讓瀏覽器 UI 穩定）
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(updateLayoutVars, 50);
+});
 
-// 視窗大小 / 方向變化時更新
-window.addEventListener('resize', updateVHVars);
-window.addEventListener('orientationchange', updateVHVars);
-
-// 行動瀏覽器 UI 動態變化時更新
+// 視窗大小 / 方向 / viewport 變化時即時更新
+window.addEventListener('resize', updateLayoutVars);
+window.addEventListener('orientationchange', updateLayoutVars);
 if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', updateVHVars);
+  window.visualViewport.addEventListener('resize', updateLayoutVars);
 }
 
 
