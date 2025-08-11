@@ -226,3 +226,7 @@ textarea{
   overflow: hidden;
   display: block;
 }
+.main-content {
+  height: calc(var(--vh) - var(--topbar-h));
+  overflow: hidden; /* 避免滑動 */
+}
