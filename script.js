@@ -1,3 +1,11 @@
+/* ===== 動態 vh（行動裝置 100vh 修正） ===== */
+function updateVH() {
+  document.documentElement.style.setProperty('--vh', `${window.innerHeight}px`);
+}
+window.addEventListener('resize', updateVH);
+window.addEventListener('orientationchange', updateVH);
+updateVH();
+
 /* ===== 預設題庫（照你要的順序：男豆 → 女豆 → 旴卡） ===== */
 const PRESET_BANKS = [
   {
@@ -9,12 +17,13 @@ const PRESET_BANKS = [
     id: "kpop-female",
     label: "KPOP女豆BATTLE",
     url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx4T46KlhDjb5LpnkTDjbF2_jQ_3aRK0SGXjfW2szL8oBoCmW2a-YMHpl8uSxHNqW_KMa09Y8KAqmi/pub?gid=1697531857&single=true&output=csv"
-  },
+  }
+  /*,
   {
     id: "xuka",
     label: "旴卡BATTLE",
     url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx4T46KlhDjb5LpnkTDjbF2_jQ_3aRK0SGXjfW2szL8oBoCmW2a-YMHpl8uSxHNqW_KMa09Y8KAqmi/pub?gid=0&single=true&output=csv"
-  }
+  }*/
 ];
 
 /* ===== Config 開關 ===== */
