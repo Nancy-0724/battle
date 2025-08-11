@@ -255,7 +255,7 @@ textarea{
   }
 }
 /* 讓 JS 能精準控制圖片大小：避免其它規則把高度鎖死 */
-.card{ display: grid; grid-template-rows: 1fr auto; }
+
 .card img{
   height: auto;        /* 由 JS 寫入高度 */
   width: 100%;         /* JS 會再把 width 設成與 3:4 對應的值並置中 */
