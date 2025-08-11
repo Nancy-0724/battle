@@ -6,6 +6,16 @@ window.addEventListener('resize', updateVH);
 window.addEventListener('orientationchange', updateVH);
 updateVH();
 
+function updateTopbarH() {
+  const tb = document.querySelector('.topbar');
+  if (tb) document.documentElement.style.setProperty('--topbar-h', `${tb.offsetHeight}px`);
+}
+window.addEventListener('resize', updateTopbarH);
+window.addEventListener('orientationchange', updateTopbarH);
+window.addEventListener('DOMContentLoaded', updateTopbarH);
+updateTopbarH();
+
+
 /* ===== 預設題庫（照你要的順序：男豆 → 女豆 → 旴卡） ===== */
 const PRESET_BANKS = [
   {
