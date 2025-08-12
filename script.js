@@ -1,107 +1,3 @@
-/* ===== 尺寸變數（不動比賽邏輯） ===== */
-function writeLayoutVars(){
-  const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-  document.documentElement.style.setProperty('--vh', `${Math.round(vh)}px`);
-  const topbar = document.querySelector('.topbar');
-  const topbarH = topbar ? topbar.offsetHeight : 0;
-  document.documentElement.style.setProperty('--topbar-h', `${Math.round(topbarH)}px`);
-}
-
-/* ===== 把每張卡片限制在一頁內（3:4） ===== */
-function fitCards(){
-  const arena = document.querySelector('.arena');
-  if (!arena || getComputedStyle(arena).display === 'none') return;
-
-  const rootCS = getComputedStyle(document.documentElement);
-  const vh = parseFloat(rootCS.getPropertyValue('--vh')) || window.innerHeight;
-  const topbarH = parseFloat(rootCS.getPropertyValue('--topbar-h')) || 0;
-  const safeGap = parseFloat(rootCS.getPropertyValue('--safe-gap')) || 30;
-
-  // 可用高度（扣 topbar、arena padding、safe gap）
-  const arenaCS = getComputedStyle(arena);
-  const arenaPad = (parseFloat(arenaCS.paddingTop||'0') + parseFloat(arenaCS.paddingBottom||'0'));
-  const usableH = Math.max(0, vh - topbarH - arenaPad - safeGap);
-
-  const vs = arena.querySelector('.vs');
-  const vsH = vs ? vs.getBoundingClientRect().height : 0;
-  const rowGap = parseFloat(arenaCS.rowGap || '0') || 0;
-  const isMobile = window.matchMedia('(max-width: 640px)').matches;
-
-  const perCardTotalH = isMobile
-    ? (usableH - vsH - rowGap) / 2
-    : usableH;
-
-  ['cardA','cardB'].forEach(id=>{
-    const card = document.getElementById(id);
-    if(!card) return;
-    const ccs = getComputedStyle(card);
-    const paddingBorder = ['paddingTop','paddingBottom','borderTopWidth','borderBottomWidth']
-      .map(k=>parseFloat(ccs[k]||'0')).reduce((a,b)=>a+b,0);
-    const title = card.querySelector('.card-info');
-    const titleH = title ? title.getBoundingClientRect().height : 0;
-
-    const maxImgH = Math.max(0, perCardTotalH - paddingBorder - titleH);
-    const wrap = card.querySelector('.img-wrap');
-    if(!wrap) return;
-
-    // 依卡片寬換算 3:4 的理論高度，取不超過 maxImgH 的值
-    const innerW = card.clientWidth - parseFloat(ccs.paddingLeft||'0') - parseFloat(ccs.paddingRight||'0');
-    const hByAspect = innerW * (4/3);
-    const finalH = Math.floor(Math.min(maxImgH, hByAspect));
-
-    wrap.style.maxHeight = `${Math.floor(maxImgH)}px`;
-    wrap.style.height = `${finalH}px`;
-  });
-}
-
-/* ===== 多幀保險重算 ===== */
-let fitRAF = 0, fitTimers = [];
-function scheduleFitCards(bursts=[0,60,250], frames=2){
-  if (fitRAF) cancelAnimationFrame(fitRAF);
-  fitTimers.forEach(t=>clearTimeout(t));
-  fitTimers = [];
-
-  const runFrames = (n)=>{
-    writeLayoutVars();
-    fitCards();
-    if(n>0) fitRAF = requestAnimationFrame(()=>runFrames(n-1));
-  };
-  bursts.forEach(d=>fitTimers.push(setTimeout(()=>runFrames(frames), d)));
-}
-
-/* ===== 監看 topbar 高度改變 ===== */
-let topbarRO;
-function observeTopbar(){
-  const topbar = document.querySelector('.topbar');
-  if(!topbar || typeof ResizeObserver === 'undefined') return;
-  topbarRO = new ResizeObserver(()=>scheduleFitCards([0],2));
-  topbarRO.observe(topbar);
-}
-
-/* ===== 綁定版面事件（初始化、視窗、回前景、字體、圖片） ===== */
-function bindLayoutReflow(){
-  document.addEventListener('DOMContentLoaded', ()=>scheduleFitCards([50,200],3));
-  window.addEventListener('load', ()=>scheduleFitCards([0,120,300],3));
-  window.addEventListener('resize', ()=>scheduleFitCards([0],2));
-  window.addEventListener('orientationchange', ()=>scheduleFitCards([0,120],3));
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize', ()=>scheduleFitCards([0],2));
-  }
-  document.addEventListener('visibilitychange', ()=>{
-    if(document.visibilityState==='visible') scheduleFitCards([0,60],2);
-  });
-  if(document.fonts && document.fonts.ready){
-    document.fonts.ready.then(()=>scheduleFitCards([0],2));
-  }
-  ['imgA','imgB'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('load', ()=>scheduleFitCards([0],1));
-  });
-  observeTopbar();
-}
-
-/* ===== 以下是你的競賽邏輯（原封不動） ===== */
-
 /* ===== 預設題庫（照你要的順序：男豆 → 女豆 → 旴卡） ===== */
 const PRESET_BANKS = [
   {
@@ -143,16 +39,16 @@ let state = {
 const $ = s => document.querySelector(s);
 const shuffle = a => a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
 const deepClone = o => JSON.parse(JSON.stringify(o));
-const medalFor = i => (i===0?'🥇':i===1?'🥈':i===2?'🥉':'');
+const medalFor = i => (i===0?'🥇':i===1?'🥈':i===2?'🥉':''); // 前三名獎牌
 
-/* ===== Google Drive image helpers ===== */
+/* ===== Google Drive image helpers（不轉小寫、先縮圖後 uc） ===== */
 function isDriveUrl(u){
   if(!u) return false;
   return /(^https?:\/\/)?(www\.)?drive\.google\.com/.test(String(u));
 }
 function extractDriveId(u){
   if(!u) return "";
-  const s = String(u).trim();
+  const s = String(u).trim(); // 不轉小寫！Drive ID 區分大小寫
   const m1 = s.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
   if (m1) return m1[1];
   const m2 = s.match(/\/(?:file\/)?d\/([A-Za-z0-9_-]{10,})/);
@@ -161,9 +57,12 @@ function extractDriveId(u){
 }
 function toThumbnailUrl(id, sz=1200){ return `https://drive.google.com/thumbnail?id=${id}&sz=w${sz}`; }
 function toUcViewUrl(id){ return `https://drive.google.com/uc?export=view&id=${id}`; }
+
+/* 設定圖片（先用縮圖，失敗再退回 uc） */
 function setImage(imgEl, name, rawUrl){
   imgEl.alt = name || "";
   if (!rawUrl) { imgEl.src = ""; return; }
+
   if (isDriveUrl(rawUrl)) {
     const id = extractDriveId(rawUrl);
     if(!id){ imgEl.src=""; console.warn("Drive 連結缺少檔案ID：", rawUrl); return; }
@@ -180,6 +79,8 @@ function setImage(imgEl, name, rawUrl){
     imgEl.src = rawUrl;
   }
 }
+
+/* 排名清單使用的縮圖 URL（Drive → thumbnail，其它直接回傳） */
 function preferredThumbUrl(rawUrl, size=200){
   if (!rawUrl) return "";
   if (isDriveUrl(rawUrl)) {
@@ -189,7 +90,7 @@ function preferredThumbUrl(rawUrl, size=200){
   return rawUrl;
 }
 
-/* ===== Parse ===== */
+/* ===== Parse（同名且同圖才去重；可讀表頭 Name/Image） ===== */
 function parseCsvText(csv){
   const rows = csv.split(/\r?\n/).filter(Boolean);
   const split = r => r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x=>x.replace(/^"|"$/g,'').trim());
@@ -209,13 +110,14 @@ function parseCsvText(csv){
     if (!name) continue;
     const imgRaw = imgIdx>=0 ? (cols[imgIdx] || "").trim() : "";
     const key = `${name}||${imgRaw}`.toLowerCase();
-    if (seen.has(key)) continue;
+    if (seen.has(key)) continue;     // 同名且同圖才去重
     seen.add(key);
     const id = (idIdx>=0 && cols[idIdx]) ? String(cols[idIdx]).trim() : `row-${i}`;
     out.push({ id, name, img: imgRaw });
   }
   return out;
 }
+
 function parseManualList(text){
   const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
   const seen = new Set(), out = [];
@@ -223,7 +125,7 @@ function parseManualList(text){
     const [name, imgRaw=""] = line.split(",").map(x=>x.trim());
     if (!name) return;
     const key = `${name}||${imgRaw}`.toLowerCase();
-    if (seen.has(key)) return;
+    if (seen.has(key)) return;       // 同名且同圖才去重
     seen.add(key);
     out.push({ id:`m-${i}`, name, img: imgRaw });
   });
@@ -246,6 +148,7 @@ function seedBracketFromIds(ids, label){
   state.roundLosers = {};
   state.phaseLabel = label || state.phaseLabel;
 }
+
 function seedFirstRound(){
   const ids = shuffle(state.entries.map(e=>e.id)); // 主賽首輪保持洗牌
   state.history = [];
@@ -255,7 +158,7 @@ function seedFirstRound(){
   seedBracketFromIds(ids, "主賽");
 }
 
-/* ===== Snapshots / Undo ===== */
+/* ===== Lightweight snapshots ===== */
 function snapshotOf(s){
   return JSON.stringify({
     entries: s.entries,
@@ -290,7 +193,7 @@ function undo(){
   renderAll();
 }
 
-/* ===== 名次賽 ===== */
+/* ===== Helpers for Plan B（名次賽） ===== */
 function enqueuePlacement(ids, label){
   if(!ids || ids.length<1) return;
   if(ids.length===1){
@@ -302,7 +205,7 @@ function enqueuePlacement(ids, label){
 function startNextPlacement(){
   const job = state.placementQueue.shift();
   if(!job){ renderAll(); return; }
-  seedBracketFromIds(job.ids, job.label);
+  seedBracketFromIds(job.ids, job.label); // 名次賽啟動時不洗牌，沿用 ids 順序
   renderAll();
 }
 function currentPair(){
@@ -319,7 +222,7 @@ function roundNameBySize(n){
   return n+" 強";
 }
 
-/* ===== 進度 ===== */
+/* ===== Progress（沿用你的邏輯） ===== */
 function pick(side){
   const round = state.rounds[state.roundIdx];
   const match = round[state.matchIdx];
@@ -356,23 +259,28 @@ function pick(side){
   }
   renderAll();
 }
+
 function finishCurrentBracket(finalWinnerId){
+  // 找到決賽對手（亞軍）
   const lastRound = state.rounds[state.rounds.length-1];
   const finalMatch = lastRound[lastRound.length-1];
   const runnerUpId = finalMatch ? ((finalMatch.aId===finalWinnerId)? finalMatch.bId : finalMatch.aId) : null;
 
+  // 先把冠軍、亞軍加入總排名
   state.finalRanking.push(finalWinnerId);
   if(runnerUpId) state.finalRanking.push(runnerUpId);
 
+  // 依倒序把各輪敗者群組成名次賽，逐一排入 queue
   let baseRankStart = state.finalRanking.length + 1;
   for(let r = state.rounds.length - 2; r>=0; r--){
-    const group = (state.roundLosers[r] || []).slice();
+    const group = (state.roundLosers[r] || []).slice(); // 保留原配位順序
     if(group.length===0) continue;
     const label = `名次賽：第 ${baseRankStart}–${baseRankStart + group.length - 1} 名`;
     enqueuePlacement(group, label);
     baseRankStart += group.length;
   }
 
+  // 清空目前 bracket 狀態
   state.rounds = []; state.roundIdx = 0; state.matchIdx = 0;
   state.nextSeeds = []; state.roundLosers = {};
 
@@ -384,7 +292,7 @@ function finishCurrentBracket(finalWinnerId){
   }
 }
 
-/* ===== UI ===== */
+/* ===== UI（最終排名＝數字 + 🥇/🥈/🥉 + 小縮圖 + 名稱） ===== */
 function renderArena(){
   const p = currentPair();
   if (!p){
@@ -396,6 +304,8 @@ function renderArena(){
     box.hidden=false;
     const ol = $("#rankList");
     ol.innerHTML = "";
+
+    // 確保不使用瀏覽器序號，避免和我們手動數字衝突
     ol.style.listStyle = "none";
     ol.style.paddingLeft = "0";
 
@@ -409,17 +319,20 @@ function renderArena(){
       li.style.gap = "8px";
       li.style.margin = "6px 0";
 
+      // 手動數字
       const num = document.createElement("span");
       num.textContent = `${i+1}.`;
       num.style.width = "2.2em";
       num.style.textAlign = "right";
       num.style.fontWeight = "700";
 
+      // 🥇/🥈/🥉（只有前三名顯示）
       const medalSpan = document.createElement("span");
       medalSpan.textContent = medalFor(i);
       medalSpan.style.width = "1.2em";
       medalSpan.style.textAlign = "center";
 
+      // 小縮圖（40x40）
       const img = document.createElement("img");
       img.src = preferredThumbUrl(e.img, 120);
       img.alt = e.name;
@@ -444,6 +357,7 @@ function renderArena(){
     return;
   }
 
+  // 進行中：隱藏 sidebar
   const sb = $(".sidebar");
   if (sb) sb.style.display = "none";
 
@@ -460,14 +374,7 @@ function renderArena(){
 }
 function renderAll(){ renderArena(); }
 
-/* ===== 視窗自適應排程：render 後也補一發 ===== */
-const __renderAll = renderAll;
-renderAll = function(){
-  __renderAll();
-  scheduleFitCards([0,60],2);
-};
-
-/* ===== Bind 比賽事件（不改） ===== */
+/* ===== Bind ===== */
 function bindTournamentEvents(){
   $("#cardA").addEventListener("click", ()=>pick("A"));
   $("#cardB").addEventListener("click", ()=>pick("B"));
@@ -484,7 +391,7 @@ function bindTournamentEvents(){
   });
 }
 
-/* =====（可選）預設題庫 ===== */
+/* =====（可選）預設題庫：如果 index.html 有下拉，就自動填入並支援預覽 ===== */
 function initPresetSelectIfAny(){
   const sel = document.getElementById("presetSelect");
   if(!sel) return;
@@ -529,7 +436,7 @@ function initPresetSelectIfAny(){
   }
 }
 
-/* ===== Setup → start ===== */
+/* ===== Setup → start（支援：預設/CSV/手動） ===== */
 document.getElementById("startBtn").addEventListener("click", async ()=>{
   let entries=[];
   const presetSel = document.getElementById("presetSelect");
@@ -571,13 +478,8 @@ document.getElementById("startBtn").addEventListener("click", async ()=>{
   seedFirstRound();
   $("#setup").classList.add("hidden");
   $("#tournament").classList.remove("hidden");
-  bindTournamentEvents();
-  renderAll();
-
-  // 等下一幀後再多次保險
-  requestAnimationFrame(()=>scheduleFitCards([0,60,250],3));
+  bindTournamentEvents(); renderAll();
 });
 
 /* ===== 初始化 ===== */
 window.addEventListener("DOMContentLoaded", initPresetSelectIfAny);
-bindLayoutReflow();
