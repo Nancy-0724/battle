@@ -102,15 +102,18 @@ textarea{
   .layout{ grid-template-columns: 1fr; }
 }
 
-/* Arena：置中 + 等寬卡片 */
+/* Arena：置中，兩張卡用同一個寬度 */
 .arena{
+  --card-w: clamp(320px, 32vw, 520px); /* 卡片寬度：手機到桌機自動調 */
   display: flex;
-  justify-content: center;   /* 整組置中 */
+  justify-content: center;
   align-items: flex-start;
   gap: 24px;
-  max-width: 1200px;         /* 避免過寬 */
+  max-width: calc(var(--card-w) * 2 + 24px + 40px); /* 兩張卡 + gap + VS 預留 */
   margin: 0 auto;
 }
+
+/* 中間 VS 不要搶空間 */
 .vs{
   flex: 0 0 auto;
   align-self: center;
@@ -119,8 +122,10 @@ textarea{
   padding: 0 6px;
 }
 
-/* Card：等寬限制 */
+/* Card：明確指定相同寬度，不參與彈性平均 */
 .card{
+  width: var(--card-w);
+  flex: 0 0 var(--card-w);        /* 固定寬度，兩張一定一樣寬 */
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -131,13 +136,11 @@ textarea{
   flex-direction: column;
   gap: 8px;
   transition: transform .05s ease-out, box-shadow .1s ease-out;
-  flex: 1 1 420px;            /* 兩張平均寬度 */
-  max-width: 520px;           /* 最大寬度 */
 }
 .card:hover{ transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.25); }
 .card:active{ transform: translateY(1px); }
 
-/* 圖片固定比例 */
+/* 圖片固定 3:4，不會影響卡片寬度 */
 .card img{
   width: 100%;
   aspect-ratio: 3 / 4;
@@ -149,14 +152,11 @@ textarea{
   display: block;
 }
 
-.card-info{ padding: 0 6px 8px; }
-.card-info h2{ font-size: 18px; margin: 0; }
-
-/* 手機直排 */
+/* 手機：改直排，仍維持同寬 */
 @media (max-width: 900px){
-  .arena{ flex-direction: column; align-items: center; }
-  .card{ flex: 0 1 auto; width: min(560px, 100%); max-width: 100%; }
+  .arena{ flex-direction: column; align-items: center; max-width: none; }
 }
+
 
 /* Sidebar */
 .sidebar{
