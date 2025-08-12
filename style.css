@@ -1,6 +1,3 @@
-/* =========================
-   Theme tokens
-   ========================= */
 :root{
   --bg: #0f1115;
   --panel: #161a24;
@@ -13,265 +10,174 @@
 }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+
 body {
   margin: 0;
-  color: var(--text);
-  background: radial-gradient(1200px 800px at 10% -10%, #1a2030 0%, #0f1115 50%, #0b0d12 100%);
   font-family: ui-sans-serif, system-ui, -apple-system, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
-  line-height: 1.5;
+  background: var(--bg);
+  color: var(--text);
 }
 
-/* 共用小元件 */
-.button{
-  appearance: none;
-  border: 1px solid var(--border);
-  background: linear-gradient(180deg, #1b2130, #151a26);
+.hidden { display: none !important; }
+.muted { color: var(--muted); }
+
+.btn {
+  padding: 8px 12px;
+  background: #2a3246;
   color: var(--text);
-  padding: 10px 14px;
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   cursor: pointer;
 }
-.button.primary{
-  border-color: rgba(109,163,255,.4);
-  background: linear-gradient(180deg, rgba(109,163,255,.15), rgba(109,163,255,.05));
-  box-shadow: 0 0 0 1px rgba(109,163,255,.25) inset;
+.btn:hover { filter: brightness(1.08); }
+.btn.primary { background: var(--accent); color:#0b1220; border-color: transparent; }
+.btn.danger { background: var(--danger); border-color: transparent; }
+.btn.ghost { background: transparent; color: var(--muted); }
+
+input[type="url"], textarea, select{
+  width: 100%;
+  background: #0e1420;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  outline: none;
 }
-.button.danger{
-  border-color: rgba(255,107,107,.35);
-  background: linear-gradient(180deg, rgba(255,107,107,.15), rgba(255,107,107,.05));
-  box-shadow: 0 0 0 1px rgba(255,107,107,.25) inset;
+input[type="url"]::placeholder, textarea::placeholder { color: #6c7489; }
+
+textarea{
+  min-height: 140px;
+  resize: vertical;
 }
 
-/* =========================
-   Setup 首頁
-   ========================= */
-.setup-screen{
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 40px 20px 60px;
+.setup-screen {
+  max-width: 720px;
+  margin: 40px auto;
+  padding: 20px;
+  background: var(--panel);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
 }
 .setup-screen h1{
-  margin: 0 0 24px;
-  letter-spacing: .5px;
+  margin: 0 0 12px;
 }
-.setup-screen label{
-  display: block;
-  margin: 18px 0 8px;
-  color: var(--muted);
-  font-size: 14px;
-}
-.setup-screen input[type="text"],
-.setup-screen textarea,
-.setup-screen select{
-  width: 100%;
-  padding: 10px 12px;
-  color: var(--text);
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-.setup-screen textarea{ min-height: 160px; resize: vertical; }
-.setup-screen .row{
+.setup-actions{
+  margin-top: 12px;
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
-.setup-screen .row > * { flex: 1 1 240px; }
-.setup-screen .actions{
+.preview-row{
   display: flex;
-  gap: 10px;
-  margin-top: 20px;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 10px;
 }
 
-/* =========================
-   Tournament 主要畫面（單一視窗高度版）
-   ========================= */
-#tournament{
-  min-height: 100dvh;                  /* 視窗高度內完成呈現 */
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;                     /* 防止外層出現卷軸 */
-}
-
-/* Top bar 置頂 */
+/* Top bar */
 .topbar{
   position: sticky;
   top: 0;
-  z-index: 5;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  align-items: center;
   padding: 12px 16px;
   background: linear-gradient(180deg, rgba(15,17,21,.95), rgba(15,17,21,.65));
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(6px);
 }
 .topbar .title{ font-weight: 700; letter-spacing: .5px; }
-.topbar .round-info{ display:flex; gap:8px; align-items:center; color: var(--muted); font-size: 14px; }
-.topbar .tools{ display:flex; gap:8px; flex-wrap: wrap; }
+.topbar .round-info{ display:flex; gap:8px; align-items:center; color: var(--muted); }
+.topbar .sep{ opacity:.6; }
+.topbar .actions{ display:flex; gap:8px; }
 
-/* 主要區域：左=對戰、右=側邊欄 */
+/* Layout */
 .layout{
-  flex: 1;                              /* 吃滿除去 topbar 的高度 */
-  min-height: 0;                        /* 允許子元素收縮，避免把外層撐高 */
   display: grid;
   grid-template-columns: 1fr 320px;
-  gap: 14px;
-  padding: 14px 16px 16px;
-  overflow: hidden;                      /* 由內層自理捲動 */
+  gap: 16px;
+  padding: 16px;
+}
+@media (max-width: 960px){
+  .layout{ grid-template-columns: 1fr; }
 }
 
-/* 對戰區（左） */
+/* Arena */
 .arena{
-  background: linear-gradient(180deg, rgba(33,40,60,.45), rgba(27,33,48,.35));
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 1fr auto 1fr;
   gap: 12px;
-  min-height: 0;
-  overflow: hidden;                      /* 讓卡片在內部捲動或縮放 */
+  align-items: stretch;
+}
+.vs{
+  align-self: center;
+  font-weight: 800;
+  opacity: .8;
+  padding: 0 6px;
 }
 
-/* 題組標題列 */
-.arena .pair-title{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap: 8px;
-  font-weight: 600;
-  color: var(--muted);
-  min-height: 28px;
-}
-
-/* 兩張卡片的容器：在可用高度內置中 */
-.choices{
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  align-items: center;
-}
-
-/* 卡片 */
+/* Card */
 .card{
-  min-height: 0;                         /* 關鍵：避免被內容撐高 */
-  display: grid;
-  grid-template-rows: 1fr auto;          /* 圖片彈性 + 底部文字 */
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 12px;
-  overflow: hidden;
+  padding: 8px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform .05s ease-out, box-shadow .1s ease-out;
 }
-.card .media{
-  min-height: 0;
-  display: grid;
-  place-items: center;
-  padding: 6px;
-}
+.card:hover{ transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.25); }
+.card:active{ transform: translateY(1px); }
+
+/* 取代舊的 .card img 區塊 */
 .card img{
   width: 100%;
-  height: auto;
-  /* 視窗內「自動限高」：扣掉 topbar + 內距 + 標題列 + 卡片底部文字的空間 */
-  max-height: calc(100dvh - 220px);
-  object-fit: cover;
-  border-radius: 8px;
+  /* 固定直式 3:4 的框 */
   aspect-ratio: 3 / 4;
-}
-.card .meta{
-  display:flex;
-  align-items:center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--border);
-}
-.card .name{
-  font-weight: 700;
-  letter-spacing: .3px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.card .vote{ white-space: nowrap; color: var(--muted); font-size: 14px; }
+  height: auto;
 
-/* 控制列（換題、跳過等） */
-.controls{
-  display:flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
+  /* 圖片填滿，不留黑邊（必要時會裁掉邊緣） */
+  object-fit: cover;
+  object-position: center;
+
+  background: #000;
+  border-radius: 8px;
+  display: block; /* 消除底部行內圖片空隙 */
 }
 
-/* 側邊欄（右） */
+.card-info{ padding: 0 6px 8px; }
+.card-info h2{ font-size: 18px; margin: 0; }
+
+
+
+
+/* Sidebar */
 .sidebar{
-  min-height: 0;
-  background: linear-gradient(180deg, rgba(33,40,60,.3), rgba(27,33,48,.2));
+  background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px;
-  overflow: auto;                        /* 內容過長時僅側邊欄滾動 */
+  width: 100%;
+  margin-top: 16px;
 }
-.sidebar h3{
-  margin: 0 0 8px;
-}
-.sidebar .block + .block{ margin-top: 14px; }
 
-/* 排名與結果 */
+/* 排名顯示時，隱藏對戰區，讓排名直接在上方 */
+#tournament.finished .arena {
+  display: none !important;
+}
+#tournament.finished .sidebar {
+  width: 100%;
+}
+
+.champion h3{ margin: 0 0 8px; }
 .rank-list{
   margin: 0;
   padding-left: 18px;
 }
-.rank-list li{ margin: 6px 0; }
-
-/* =========================
-   狀態樣式
-   ========================= */
-#tournament.finished .layout{
-  grid-template-columns: 1fr;            /* 結束畫面改為單欄，側欄下移 */
+.rank-list li{
+  margin: 6px 0;
+  color: var(--text);
 }
-#tournament.finished .sidebar{
-  width: 100%;
-}
-
-/* =========================
-   響應式
-   ========================= */
-@media (max-width: 1080px){
-  .layout{ grid-template-columns: 1fr 300px; }
-}
-
-@media (max-width: 960px){
-  .layout{
-    grid-template-columns: 1fr;          /* 手機改單欄 */
-    gap: 12px;
-  }
-  .sidebar{
-    order: 3;                             /* 放到最下面 */
-    max-height: 40dvh;                    /* 保留視窗空間給對戰區 */
-  }
-  .choices{
-    grid-template-columns: 1fr;           /* 卡片上下排 */
-  }
-  .card img{
-    max-height: calc(100dvh - 260px);     /* 手機更保守，預留瀏覽器列/鍵盤 */
-  }
-}
-
-@media (max-width: 420px){
-  .topbar{ padding: 10px 12px; }
-  .layout{ padding: 12px; }
-  .arena{ padding: 12px; }
-  .card .meta{ padding: 8px 10px; }
-}
-
-/* =========================
-   細節強化（可選）
-   ========================= */
-.card:hover{ box-shadow: 0 0 0 1px rgba(109,163,255,.25) inset; }
-.card.win{ outline: 2px solid rgba(109,163,255,.5); }
-.card.lose{ opacity: .85; filter: saturate(.9); }
-.hidden{ display:none !important; }
