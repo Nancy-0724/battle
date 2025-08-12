@@ -102,22 +102,24 @@ textarea{
   .layout{ grid-template-columns: 1fr; }
 }
 
-/* Arena */
+/* Arena：置中 + 等寬卡片 */
 .arena{
   display: flex;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 12px;
-  justify-content: center; /* 水平置中 */
-  align-items: stretch;
+  justify-content: center;   /* 整組置中 */
+  align-items: flex-start;
+  gap: 24px;
+  max-width: 1200px;         /* 避免過寬 */
+  margin: 0 auto;
 }
 .vs{
+  flex: 0 0 auto;
   align-self: center;
   font-weight: 800;
   opacity: .8;
   padding: 0 6px;
 }
 
-/* Card */
+/* Card：等寬限制 */
 .card{
   background: var(--panel-2);
   border: 1px solid var(--border);
@@ -129,31 +131,32 @@ textarea{
   flex-direction: column;
   gap: 8px;
   transition: transform .05s ease-out, box-shadow .1s ease-out;
+  flex: 1 1 420px;            /* 兩張平均寬度 */
+  max-width: 520px;           /* 最大寬度 */
 }
 .card:hover{ transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.25); }
 .card:active{ transform: translateY(1px); }
 
-/* 取代舊的 .card img 區塊 */
+/* 圖片固定比例 */
 .card img{
   width: 100%;
-  /* 固定直式 3:4 的框 */
   aspect-ratio: 3 / 4;
   height: auto;
-
-  /* 圖片填滿，不留黑邊（必要時會裁掉邊緣） */
   object-fit: cover;
   object-position: center;
-
   background: #000;
   border-radius: 8px;
-  display: block; /* 消除底部行內圖片空隙 */
+  display: block;
 }
 
 .card-info{ padding: 0 6px 8px; }
 .card-info h2{ font-size: 18px; margin: 0; }
 
-
-
+/* 手機直排 */
+@media (max-width: 900px){
+  .arena{ flex-direction: column; align-items: center; }
+  .card{ flex: 0 1 auto; width: min(560px, 100%); max-width: 100%; }
+}
 
 /* Sidebar */
 .sidebar{
@@ -165,7 +168,7 @@ textarea{
   margin-top: 16px;
 }
 
-/* 排名顯示時，隱藏對戰區，讓排名直接在上方 */
+/* 排名顯示時，隱藏對戰區 */
 #tournament.finished .arena {
   display: none !important;
 }
