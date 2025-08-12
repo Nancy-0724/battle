@@ -11,10 +11,9 @@
   /* 高度相關（JS 會動態更新 --vh 與 --topbar-h） */
   --vh: 100vh;
   --topbar-h: 60px;      /* 預設值；script.js 會以實際高度覆蓋 */
-  --layout-pad-v: 10px;  /* layout 垂直 padding 合計（上下各 16px） */
+  --safe-gap: 30px;      /* 行動底部保留 */
 }
 
-...
 /* Reset / base */
 *{ box-sizing: border-box; }
 html, body{ margin:0; padding:0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "PingFang TC", "Microsoft JhengHei", Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
@@ -26,9 +25,7 @@ img{ display:block; max-width:100%; }
   margin: 0 auto;
   padding: 24px 16px 48px;
 }
-.setup-screen h1{
-  margin: 0 0 16px;
-}
+.setup-screen h1{ margin: 0 0 16px; }
 .setup-screen label{ display:block; margin: 12px 0 6px; color: var(--muted); }
 .setup-screen input[type="text"],
 .setup-screen textarea,
@@ -72,24 +69,31 @@ img{ display:block; max-width:100%; }
 .topbar .sep{ opacity:.6; }
 .topbar .actions{ display:flex; gap:8px; }
 
-/* Layout */
+/* Layout：整個畫面剛好一頁（扣掉 topbar） */
+#tournament{
+  height: var(--vh);
+  overflow: hidden;
+  display: block;
+}
 .layout{
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 16px;
   padding: 16px;
-  height: calc(var(--vh) - var(--topbar-h)); /* 保證不會超過一頁 */
+  height: calc(var(--vh) - var(--topbar-h));
 }
 @media (max-width: 960px){
   .layout{ grid-template-columns: 1fr; }
 }
 
-/* Arena */
+/* Arena：直向上下、寬螢幕左右 */
 .arena{
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   gap: 12px;
   align-items: stretch;
+  padding: 0;
+  height: 100%;
 }
 .vs{
   align-self: center;
@@ -109,6 +113,7 @@ img{ display:block; max-width:100%; }
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow: hidden;
 }
 .card:hover{ outline: 2px solid rgba(109,163,255,.25); }
 .card:active{ transform: translateY(1px); }
@@ -130,15 +135,23 @@ img{ display:block; max-width:100%; }
   overflow: hidden;
 }
 
-/* 圖片共用樣式（桌面+行動都用） */
-.card img {
+/* 新增：圖片容器，固定 3:4，JS 會幫它設 height / max-height 上限 */
+.img-wrap{
+  width: 100%;
   aspect-ratio: 3 / 4;
-  object-fit: cover;
-  object-position: center;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 圖片本體 */
+.card .img-wrap > img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain; /* 不裁臉 */
   background: #000;
   border-radius: 8px;
-  display: block;
-  max-width: 100%;
 }
 
 /* 桌面版 */
@@ -148,15 +161,7 @@ img{ display:block; max-width:100%; }
     grid-auto-rows: 1fr;
     align-items: stretch;
   }
-  .vs{
-    justify-self: center;
-    padding: 4px 0;
-  }
-  .card img{
-    height: auto;
-    width: auto;
-    margin: 0 auto;
-  }
+  .vs{ justify-self: center; padding: 4px 0; }
 }
 
 /* 行動版 */
@@ -167,10 +172,7 @@ img{ display:block; max-width:100%; }
     grid-template-rows: 1fr auto 1fr;
     row-gap: 10px;
   }
-  .vs{
-    justify-self: center;
-    padding: 2px 0;
-  }
+  .vs{ justify-self: center; padding: 2px 0; }
 }
 
 /* Sidebar */
@@ -190,14 +192,3 @@ img{ display:block; max-width:100%; }
 .champion h3{ margin: 0 0 8px; }
 .rank-list{ margin: 0; padding-left: 18px; }
 .rank-list li{ margin: 6px 0; color: var(--text); }
-
-/* 整個比賽畫面滿一頁 */
-#tournament{
-  height: calc(var(--vh));
-  overflow: hidden;
-  display: block;
-}
-.main-content {
-  height: calc(var(--vh) - var(--topbar-h));
-  overflow: hidden; /* 避免滑動 */
-}
