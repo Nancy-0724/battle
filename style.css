@@ -14,70 +14,46 @@
   --layout-pad-v: 10px;  /* layout 垂直 padding 合計（上下各 16px） */
 }
 
-* { box-sizing: border-box; }
+...
+/* Reset / base */
+*{ box-sizing: border-box; }
+html, body{ margin:0; padding:0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "PingFang TC", "Microsoft JhengHei", Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+img{ display:block; max-width:100%; }
 
-body {
-  margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
-  background: var(--bg);
-  color: var(--text);
+/* Setup */
+.setup-screen{
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
 }
-
-.hidden { display: none !important; }
-.muted { color: var(--muted); }
-
-.btn {
-  padding: 8px 12px;
-  background: #2a3246;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  cursor: pointer;
+.setup-screen h1{
+  margin: 0 0 16px;
 }
-.btn:hover { filter: brightness(1.08); }
-.btn.primary { background: var(--accent); color:#0b1220; border-color: transparent; }
-.btn.danger { background: var(--danger); border-color: transparent; }
-.btn.ghost { background: transparent; color: var(--muted); }
-
-input[type="url"], textarea, select{
+.setup-screen label{ display:block; margin: 12px 0 6px; color: var(--muted); }
+.setup-screen input[type="text"],
+.setup-screen textarea,
+.setup-screen select{
   width: 100%;
-  background: #0e1420;
+  background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 10px 12px;
   outline: none;
 }
-input[type="url"]::placeholder, textarea::placeholder { color: #6c7489; }
-
-textarea{
-  min-height: 140px;
-  resize: vertical;
+.setup-screen textarea{ min-height: 120px; }
+.setup-screen .row{ display:flex; gap:12px; align-items:center; }
+.setup-screen button{
+  background: var(--accent);
+  color: #041228;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
 }
-
-.setup-screen {
-  max-width: 720px;
-  margin: 40px auto;
-  padding: 20px;
-  background: var(--panel);
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
-}
-.setup-screen h1{
-  margin: 0 0 12px;
-}
-.setup-actions{
-  margin-top: 12px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.preview-row{
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 6px 0 10px;
-}
+.setup-screen .muted{ color: var(--muted); font-size: 14px; }
+.hidden{ display:none !important; }
 
 /* Top bar */
 .topbar{
@@ -133,14 +109,16 @@ textarea{
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transition: transform .05s ease-out, box-shadow .1s ease-out;
-  min-height: 0;
 }
+.card:hover{ outline: 2px solid rgba(109,163,255,.25); }
+.card:active{ transform: translateY(1px); }
 
-/* 標題先出現 */
 .card-info {
-  order: -1;
-  padding: 8px 6px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 4px;
   text-align: center;
 }
 .card-info h2{
@@ -170,6 +148,10 @@ textarea{
     grid-auto-rows: 1fr;
     align-items: stretch;
   }
+  .vs{
+    justify-self: center;
+    padding: 4px 0;
+  }
   .card img{
     height: auto;
     width: auto;
@@ -188,17 +170,6 @@ textarea{
   .vs{
     justify-self: center;
     padding: 2px 0;
-  }
-  /* 每張卡占半個視窗高 */
-  .card{
-    height: calc(
-      (var(--vh) - var(--topbar-h) - var(--layout-pad-v) - 10px - 22px) / 2
-    );
-  }
-  .card img{
-    height: 100%;
-    width: auto;
-    margin: 0 auto;
   }
 }
 
