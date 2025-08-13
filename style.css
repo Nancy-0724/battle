@@ -258,14 +258,3 @@ textarea{
   aspect-ratio: 3 / 4; /* 保持比例 */
   object-fit: cover;
 }
-/* 比賽結束時，顯示排名全寬可滾動 */
-#tournament.finished .layout {
-  display: block !important;   /* 改成單欄結構 */
-}
-
-#tournament.finished .sidebar {
-  width: 100% !important;
-  max-height: calc(100vh - 80px); /* 扣掉 topbar 高度 */
-  overflow-y: auto;              /* 可以上下滾動 */
-}
-
