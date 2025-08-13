@@ -449,7 +449,7 @@ function fitCards() {
 
 
      // 卡片本身還有 gap（你的 .card 設了 gap: 8px）
-   const cardGap = parseFloat(ccs.gap || ccs.rowGap || '0') || 0;   /* 讀真實 gap，避免硬編數字 */  :contentReference[oaicite:4]{index=4}
+   const cardGap = parseFloat(ccs.gap || ccs.rowGap || '0') || 0;   /* 讀真實 gap，避免硬編數字 */
    // 圖片可用最高度：扣掉標題高度 + 標題 margin + 內距/邊框 + 卡片 gap
    const maxImgH = Math.max(0, perCardTotalH - paddingBorder - titleH - titleMargin - cardGap - 1);
     //  ↑ 再留 1px 緩衝，避免邊界條件出現 1px 捲軸
