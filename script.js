@@ -69,7 +69,7 @@ let state = {
 
 /* ===== Utils ===== */
 const $ = s => document.querySelector(s);
-const shuffle = a => a.map(v=>[.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
+const shuffle = a => a.map(v => [Math.random(), v]).sort((x,y) => x[0]-y[0]).map(x => x[1]);
 const deepClone = o => JSON.parse(JSON.stringify(o));
 const medalFor = i => (i===0?'🥇':i===1?'🥈':i===2?'🥉':''); // 前三名獎牌
 
@@ -426,7 +426,8 @@ function fitCards() {
   const aPadBot = parseFloat(aCS.paddingBottom || '0') || 0;
   const aBdTop  = parseFloat(aCS.borderTopWidth || '0') || 0;
   const aBdBot  = parseFloat(aCS.borderBottomWidth || '0') || 0;
-  const arenaH  = .max(0, arenaBoxH - aPadTop - aPadBot - aBdTop - aBdBot);
+  const arenaH  = Math.max(0, arenaBoxH - aPadTop - aPadBot - aBdTop - aBdBot);
+
 
   // 2) VS 區塊高度 & grid 的列間距
   const vs = arena.querySelector('.vs');
