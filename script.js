@@ -69,7 +69,7 @@ let state = {
 
 /* ===== Utils ===== */
 const $ = s => document.querySelector(s);
-const shuffle = a => a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
+const shuffle = a => a.map(v=>[.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
 const deepClone = o => JSON.parse(JSON.stringify(o));
 const medalFor = i => (i===0?'🥇':i===1?'🥈':i===2?'🥉':''); // 前三名獎牌
 
@@ -419,15 +419,20 @@ function renderAll(){ renderArena(); }
 function fitCards() {
   const arena = document.querySelector('.arena');
   if (!arena || getComputedStyle(arena).display === 'none') return;
+  // 1) 量 .arena 的「內容高度」（扣掉自身 padding / border）
+  const arenaBoxH = arena.getBoundingClientRect().height;
+  const aCS = getComputedStyle(arena);
+  const aPadTop = parseFloat(aCS.paddingTop || '0') || 0;
+  const aPadBot = parseFloat(aCS.paddingBottom || '0') || 0;
+  const aBdTop  = parseFloat(aCS.borderTopWidth || '0') || 0;
+  const aBdBot  = parseFloat(aCS.borderBottomWidth || '0') || 0;
+  const arenaH  = .max(0, arenaBoxH - aPadTop - aPadBot - aBdTop - aBdBot);
 
-  const arenaH = arena.getBoundingClientRect().height; // 已扣掉 topbar/padding 的可用高度
+  // 2) VS 區塊高度 & grid 的列間距
   const vs = arena.querySelector('.vs');
   const vsH = vs ? vs.getBoundingClientRect().height : 0;
-
-  const cs = getComputedStyle(arena);
-  const rowGap = parseFloat(cs.rowGap || '0') || 0;
+  const rowGap = parseFloat(aCS.rowGap || aCS.gap || '0') || 0;
   const isMobile = window.matchMedia('(max-width: 960px)').matches;
-
   const perCardTotalH = isMobile ? (arenaH - vsH - rowGap) / 2 : arenaH;
 
   ['cardA', 'cardB'].forEach(id => {
@@ -451,7 +456,7 @@ function fitCards() {
      // 卡片本身還有 gap（你的 .card 設了 gap: 8px）
    const cardGap = parseFloat(ccs.gap || ccs.rowGap || '0') || 0;   /* 讀真實 gap，避免硬編數字 */
    // 圖片可用最高度：扣掉標題高度 + 標題 margin + 內距/邊框 + 卡片 gap
-   const maxImgH = Math.max(0, perCardTotalH - paddingBorder - titleH - titleMargin - cardGap - 1);
+   const maxImgH = Math.max(0, perCardTotalH - paddingBorder - titleH - titleMargin - cardGap - 4);
     //  ↑ 再留 1px 緩衝，避免邊界條件出現 1px 捲軸
 
     // 依 3:4 計算：圖片寬度不能超過卡片內部寬
