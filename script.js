@@ -1,3 +1,21 @@
+/* ===== 動態 vh（行動裝置 100vh 修正） ===== */
+function updateVH() {
+  document.documentElement.style.setProperty('--vh', `${window.innerHeight}px`);
+}
+window.addEventListener('resize', updateVH);
+window.addEventListener('orientationchange', updateVH);
+updateVH();
+
+/* ===== 量測 Topbar 實際高度（避免預估不準） ===== */
+function updateTopbarH() {
+  const tb = document.querySelector('.topbar');
+  if (tb) document.documentElement.style.setProperty('--topbar-h', `${tb.offsetHeight}px`);
+}
+window.addEventListener('resize', updateTopbarH);
+window.addEventListener('orientationchange', updateTopbarH);
+window.addEventListener('DOMContentLoaded', updateTopbarH);
+updateTopbarH();
+
 /* ===== 預設題庫（照你要的順序：男豆 → 女豆 → 旴卡） ===== */
 const PRESET_BANKS = [
   {
@@ -374,6 +392,96 @@ function renderArena(){
 }
 function renderAll(){ renderArena(); }
 
+/* ===== 視窗自適應：把每張圖在 3:4 下塞進一頁，不超出 ===== */
+function fitCards() {
+  const arena = document.querySelector('.arena');
+  if (!arena || getComputedStyle(arena).display === 'none') return;
+
+  const arenaH = arena.getBoundingClientRect().height; // 已扣掉 topbar/padding 的可用高度
+  const vs = arena.querySelector('.vs');
+  const vsH = vs ? vs.getBoundingClientRect().height : 0;
+
+  const cs = getComputedStyle(arena);
+  const rowGap = parseFloat(cs.rowGap || '0') || 0;
+  const isMobile = window.matchMedia('(max-width: 640px)').matches;
+
+  const perCardTotalH = isMobile ? (arenaH - vsH - rowGap) / 2 : arenaH;
+
+  ['cardA', 'cardB'].forEach(id => {
+    const card = document.getElementById(id);
+    if (!card) return;
+    const img = card.querySelector('img');
+    const title = card.querySelector('.card-info');
+
+    const ccs = getComputedStyle(card);
+    const cPadTop = parseFloat(ccs.paddingTop || '0');
+    const cPadBot = parseFloat(ccs.paddingBottom || '0');
+    const cBorderTop = parseFloat(ccs.borderTopWidth || '0');
+    const cBorderBot = parseFloat(ccs.borderBottomWidth || '0');
+    const paddingBorder = cPadTop + cPadBot + cBorderTop + cBorderBot;
+
+    const titleH = title ? title.getBoundingClientRect().height : 0;
+
+    // 卡片圖片可用的最大高度（扣掉標題/內距/間隙）
+    const maxImgH = Math.max(0, perCardTotalH - paddingBorder - titleH - 8 /* card gap 近似 */);
+
+    // 依 3:4 計算：圖片寬度不能超過卡片內部寬
+    const cardInnerW = card.clientWidth - parseFloat(ccs.paddingLeft||'0') - parseFloat(ccs.paddingRight||'0');
+    const heightByAspect = cardInnerW * (4/3);
+    const finalImgH = Math.min(maxImgH, heightByAspect);
+
+    img.style.height = `${finalImgH}px`;
+    img.style.width  = `${finalImgH * (3/4)}px`;
+    img.style.margin = '0 auto';
+  });
+}
+
+/* === 穩定首屏（強化版）：多次延後＋多幀重算 fitCards === */
+let fitRAF = 0, fitTimers = [];
+function scheduleFitCards(bursts = [0, 60, 250], frames = 3){
+  if (fitRAF) cancelAnimationFrame(fitRAF);
+  fitTimers.forEach(t => clearTimeout(t));
+  fitTimers = [];
+
+  const runFrames = (n) => {
+    fitCards();
+    if (n > 0) fitRAF = requestAnimationFrame(() => runFrames(n - 1));
+  };
+
+  bursts.forEach(delay => {
+    fitTimers.push(setTimeout(() => runFrames(frames), delay));
+  });
+}
+
+// 重要生命週期：保險重算
+window.addEventListener('load', () => {
+  updateVH();
+  updateTopbarH();
+  scheduleFitCards([0, 60, 250], 4);
+});
+window.addEventListener('resize', () => scheduleFitCards([0], 2));
+window.addEventListener('orientationchange', () => scheduleFitCards([0, 60], 3));
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') scheduleFitCards([0, 60], 2);
+});
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => scheduleFitCards([0], 3));
+}
+['imgA','imgB'].forEach(id=>{
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('load', () => scheduleFitCards([0], 2), { once:false });
+});
+
+// 每次重繪後也排重算（取代原本的 monkey patch）
+const __renderAll = renderAll;
+renderAll = function(){
+  __renderAll();
+  scheduleFitCards([0, 60], 2);
+};
+
+
+
+
 /* ===== Bind ===== */
 function bindTournamentEvents(){
   $("#cardA").addEventListener("click", ()=>pick("A"));
@@ -476,9 +584,11 @@ document.getElementById("startBtn").addEventListener("click", async ()=>{
 
   state.entries=deepClone(entries);
   seedFirstRound();
-  $("#setup").classList.add("hidden");
-  $("#tournament").classList.remove("hidden");
-  bindTournamentEvents(); renderAll();
+$("#setup").classList.add("hidden");
+$("#tournament").classList.remove("hidden");
+bindTournamentEvents(); renderAll();
+scheduleFitCards(4, 0); // ⬅️ 新增：顯示後再穩定重算一次
+
 });
 
 /* ===== 初始化 ===== */
