@@ -258,4 +258,9 @@ textarea{
   aspect-ratio: 3 / 4; /* 保持比例 */
   object-fit: cover;
 }
+#tournament.finished .sidebar {
+  width: 100%;
+  height: calc(var(--vh) - var(--topbar-h)); /* 扣掉頂部工具列 */
+  overflow-y: auto; /* 可以垂直滾動 */
+}
 
