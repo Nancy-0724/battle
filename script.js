@@ -1,17 +1,24 @@
-/* ===== 動態 vh（行動裝置 / 非全螢幕 修正） ===== */
+/* ===== 動態 vh（行動裝置 / 非全螢幕修正） ===== */
 function updateVH(){
   const vv = window.visualViewport;
   let h = vv ? vv.height : window.innerHeight;
-  h = Math.max(0, Math.floor(h - 1)); // 1px 安全邊界，避免滾動條
+  // 留 1px 安全邊界，避免捲軸（四捨五入誤差）
+  h = Math.max(0, Math.floor(h - 1));
   document.documentElement.style.setProperty('--vh', `${h}px`);
 }
-window.addEventListener('resize', updateVH);
-window.addEventListener('orientationchange', updateVH);
+function onViewportChange(){
+  updateVH();
+  // 視口高度變更（網址列收/展）時，重算圖片避免超頁
+  if (typeof scheduleFitCards === "function") scheduleFitCards([0, 60], 2);
+}
+window.addEventListener('resize', onViewportChange);
+window.addEventListener('orientationchange', onViewportChange);
 if (window.visualViewport){
-  window.visualViewport.addEventListener('resize', updateVH);
-  window.visualViewport.addEventListener('scroll', updateVH);
+  window.visualViewport.addEventListener('resize', onViewportChange);
+  window.visualViewport.addEventListener('scroll', onViewportChange);
 }
 updateVH();
+
 
 /* ===== 量測 Topbar 實際高度（避免預估不準） ===== */
 function updateTopbarH() {
@@ -437,9 +444,15 @@ function fitCards() {
     const paddingBorder = cPadTop + cPadBot + cBorderTop + cBorderBot;
 
     const titleH = title ? title.getBoundingClientRect().height : 0;
+    const tcs = title ? getComputedStyle(title) : null;
+    const titleMargin = tcs ? (parseFloat(tcs.marginTop||'0') + parseFloat(tcs.marginBottom||'0')) : 0;
 
-    // 卡片圖片可用的最大高度（扣掉標題/內距/間隙）
-    const maxImgH = Math.max(0, perCardTotalH - paddingBorder - titleH - 8 /* card gap 近似 */);
+
+     // 卡片本身還有 gap（你的 .card 設了 gap: 8px）
+   const cardGap = parseFloat(ccs.gap || ccs.rowGap || '0') || 0;   /* 讀真實 gap，避免硬編數字 */  :contentReference[oaicite:4]{index=4}
+   // 圖片可用最高度：扣掉標題高度 + 標題 margin + 內距/邊框 + 卡片 gap
+   const maxImgH = Math.max(0, perCardTotalH - paddingBorder - titleH - titleMargin - cardGap - 1);
+    //  ↑ 再留 1px 緩衝，避免邊界條件出現 1px 捲軸
 
     // 依 3:4 計算：圖片寬度不能超過卡片內部寬
     const cardInnerW = card.clientWidth - parseFloat(ccs.paddingLeft||'0') - parseFloat(ccs.paddingRight||'0');
