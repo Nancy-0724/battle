@@ -434,6 +434,11 @@ function fitCards() {
   const vsH = vs ? vs.getBoundingClientRect().height : 0;
   const rowGap = parseFloat(aCS.rowGap || aCS.gap || '0') || 0;
   const isMobile = window.matchMedia('(max-width: 960px)').matches;
+  const vsCS = vs ? getComputedStyle(vs) : null;
+  const vsMarginV = isMobile && vsCS
+    ? (parseFloat(vsCS.marginTop || '0') + parseFloat(vsCS.marginBottom || '0'))
+    : 0;
+
   const perCardTotalH = isMobile ? (arenaH - vsH - rowGap) / 2 : arenaH;
 
   ['cardA', 'cardB'].forEach(id => {
@@ -443,17 +448,26 @@ function fitCards() {
     const title = card.querySelector('.card-info');
 
     const ccs = getComputedStyle(card);
-    const cPadTop = parseFloat(ccs.paddingTop || '0');
-    const cPadBot = parseFloat(ccs.paddingBottom || '0');
-    const cBorderTop = parseFloat(ccs.borderTopWidth || '0');
-    const cBorderBot = parseFloat(ccs.borderBottomWidth || '0');
+    // 先扣掉 card 在容器裡的上下 margin（這會佔用容器高度）
+    const mTop = parseFloat(ccs.marginTop || '0') || 0;
+    const mBot = parseFloat(ccs.marginBottom || '0') || 0;
+    const budgetH = Math.max(0, perCardTotalH - mTop - mBot);
+
+    // 再扣掉 card 自己的 padding/border
+    const cPadTop = parseFloat(ccs.paddingTop || '0') || 0;
+    const cPadBot = parseFloat(ccs.paddingBottom || '0') || 0;
+    const cBorderTop = parseFloat(ccs.borderTopWidth || '0') || 0;
+    const cBorderBot = parseFloat(ccs.borderBottomWidth || '0') || 0;
     const paddingBorder = cPadTop + cPadBot + cBorderTop + cBorderBot;
 
+
+       // 標題實際佔高（含 margin）
     const titleH = title ? title.getBoundingClientRect().height : 0;
     const tcs = title ? getComputedStyle(title) : null;
-    const titleMargin = tcs ? (parseFloat(tcs.marginTop||'0') + parseFloat(tcs.marginBottom||'0')) : 0;
-
-
+    const titleMargin = tcs
+      ? (parseFloat(tcs.marginTop || '0') + parseFloat(tcs.marginBottom || '0'))
+      : 0;
+    
      // 卡片本身還有 gap（你的 .card 設了 gap: 8px）
    const cardGap = parseFloat(ccs.gap || ccs.rowGap || '0') || 0;   /* 讀真實 gap，避免硬編數字 */
    // 圖片可用最高度：扣掉標題高度 + 標題 margin + 內距/邊框 + 卡片 gap
