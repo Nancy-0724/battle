@@ -1,10 +1,8 @@
-/* ===== 動態 vh（行動裝置 100vh 修正）===== */
+/* ===== 動態 vh（行動裝置 / 非全螢幕 修正） ===== */
 function updateVH(){
-  // 優先用 VisualViewport（能反映瀏覽器 UI 顯示/隱藏）
   const vv = window.visualViewport;
   let h = vv ? vv.height : window.innerHeight;
-  // 留 1px 安全邊界，避免四捨五入造成滾動條
-  h = Math.max(0, Math.floor(h - 1));
+  h = Math.max(0, Math.floor(h - 1)); // 1px 安全邊界，避免滾動條
   document.documentElement.style.setProperty('--vh', `${h}px`);
 }
 window.addEventListener('resize', updateVH);
