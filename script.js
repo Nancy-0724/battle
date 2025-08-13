@@ -421,7 +421,7 @@ function fitCards() {
 
   const cs = getComputedStyle(arena);
   const rowGap = parseFloat(cs.rowGap || '0') || 0;
-  const isMobile = window.matchMedia('(max-width: 640px)').matches;
+  const isMobile = window.matchMedia('(max-width: 960px)').matches;
 
   const perCardTotalH = isMobile ? (arenaH - vsH - rowGap) / 2 : arenaH;
 
@@ -605,7 +605,8 @@ document.getElementById("startBtn").addEventListener("click", async ()=>{
 $("#setup").classList.add("hidden");
 $("#tournament").classList.remove("hidden");
 bindTournamentEvents(); renderAll();
-scheduleFitCards(4, 0); // ⬅️ 新增：顯示後再穩定重算一次
+scheduleFitCards([0, 60, 250], 4);
+
 
 });
 
