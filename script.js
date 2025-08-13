@@ -310,7 +310,6 @@ function finishCurrentBracket(finalWinnerId){
   }
 }
 
-
 /* ===== UI（最終排名＝數字 + 🥇/🥈/🥉 + 小縮圖 + 名稱） ===== */
 function renderArena(){
   const p = currentPair();
@@ -591,26 +590,6 @@ bindTournamentEvents(); renderAll();
 scheduleFitCards(4, 0); // ⬅️ 新增：顯示後再穩定重算一次
 
 });
-// 顯示最終排名彈窗
-function showRanking(names) {
-  const list = document.getElementById("finalRankingList");
-  list.innerHTML = names.map(name => `<li>${name}</li>`).join("");
-  document.getElementById("rankingModal").style.display = "flex";
-}
-
-// 關閉最終排名彈窗
-function closeRanking() {
-  document.getElementById("rankingModal").style.display = "none";
-}
-
-// 在比賽完成時呼叫
-function finishCurrentBracket() {
-  // ... 你的比賽結束邏輯（原本的程式碼） ...
-
-  // 假設 finalRanking 是你的排名陣列（第一名到最後一名）
-  // 這裡要替換成你實際的變數
-  showRanking(finalRanking);
-}
 
 /* ===== 初始化 ===== */
 window.addEventListener("DOMContentLoaded", initPresetSelectIfAny);

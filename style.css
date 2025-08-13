@@ -258,35 +258,4 @@ textarea{
   aspect-ratio: 3 / 4; /* 保持比例 */
   object-fit: cover;
 }
-/* === 最終排名彈窗樣式 === */
-#rankingModal {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 17, 21, 0.95);
-  z-index: 9999;
-  display: none;                /* 預設隱藏 */
-  flex-direction: column;
-  padding: 20px;
-  overflow-y: auto;             /* 可滾動 */
-}
 
-#rankingModal h2 {
-  margin-top: 0;
-  color: var(--accent);
-  text-align: center;
-}
-
-#rankingModal ol {
-  margin: 0 auto;
-  padding-left: 20px;
-  max-width: 500px;
-}
-
-#rankingModal li {
-  margin: 8px 0;
-}
-
-#rankingModal .btn {
-  align-self: center;
-  margin-top: 20px;
-}
