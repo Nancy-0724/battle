@@ -183,10 +183,12 @@ textarea{
 
 /* ====== 高度鎖定 & 自適應：關鍵調整 ====== */
 
-/* 整個比賽畫面吃滿一個視窗高（用 --vh 修正行動裝置 100vh 問題） */
+/* 整個比賽畫面可自然撐高＋允許捲動（避免排名頁被壓扁） */
+
 #tournament{
-  height: calc(var(--vh));
-  overflow: hidden;
+  height: auto;
+  min-height: var(--vh);
+  overflow: auto;
   display: block; /* 從 hidden 切回時確保為 block */
 }
 
@@ -210,27 +212,23 @@ textarea{
   .card img{
     height: 100%;      /* 以高為主，確保整張塞在一頁 */
     width: auto;       /* 維持 3:4 時自動調寬 */
+    max-width: 100%;
     aspect-ratio: 3 / 4;
     object-fit: cover;
-    margin: 0 auto;    /* 若寬度 < 卡片寬，置中 */
-  }
-  .card-info{
-    flex: 0 0 auto;    /* 標題固定在底部高度，不擠爆圖片 */
+    object-position: center;
+    display: block;
+    margin: 0 auto;
   }
 }
 
 /* 行動版：改成「上 vs 下」，一頁就看完 */
-@media (max-width: 640px){
-  .layout{ grid-template-columns: 1fr; }
+@media (max-width: 960px){
   .arena{
     grid-template-columns: 1fr;
     grid-template-rows: 1fr auto 1fr;   /* 上卡、VS、下卡 */
     row-gap: 10px;
   }
-  .vs{
-    justify-self: center;
-    padding: 2px 0;
-  }
+
 
   /* 每張卡約各占半個視窗高（扣掉 VS 與間距） */
   .card{
@@ -249,13 +247,28 @@ textarea{
     margin: 0 auto;
   }
 }
-/* 讓 JS 能精準控制圖片大小：避免其它規則把高度鎖死 */
-.card{ display: grid; grid-template-rows: 1fr auto; }
-.card img{
-  height: auto;        /* 由 JS 寫入高度 */
-  width: 100%;         /* JS 會再把 width 設成與 3:4 對應的值並置中 */
-  max-width: 100%;
-  aspect-ratio: 3 / 4; /* 保持比例 */
-  object-fit: cover;
+/* ====== 新增：排名頁狀態放寬限制，讓清單能滑到最底 ====== */
+
+#tournament.finished{
+
+  height: auto;
+
+  min-height: var(--vh);
+
+  overflow: auto;
+
+}
+
+#tournament.finished .layout{
+
+  height: auto;
+
+}
+
+#tournament.finished .sidebar{
+
+  max-height: calc(var(--vh) - var(--topbar-h) - 24px);
+
+  overflow: auto;
 }
 
