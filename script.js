@@ -338,7 +338,14 @@ function renderArena(){
     const box=$("#championBox");
     box.hidden=false;
     const ol = $("#rankList");
-    ol.innerHTML = "";
+// 取得今天日期 YYYY-MM-DD
+const now = new Date();
+const dateOnly = now.getFullYear() + '-' +
+  String(now.getMonth() + 1).padStart(2, '0') + '-' +
+  String(now.getDate()).padStart(2, '0');
+
+// 先加日期
+ol.innerHTML = `<p style="text-align:center;color:var(--muted);margin:4px 0;">產生日期：${dateOnly}</p>`;
 
     // 確保不使用瀏覽器序號，避免和我們手動數字衝突
     ol.style.listStyle = "none";
