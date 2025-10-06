@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="zh-Hant">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>最愛BATTLE</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <!-- Setup：選題庫 or 自行輸入 -->
   <section id="setup" class="setup-screen">
@@ -13,7 +15,7 @@
 
     <label for="presetSelect">預設題庫（選填）</label>
     <select id="presetSelect">
-      <option value="">— 不使用預設（自行輸入）—</option>
+      <option value="">選擇題庫</option>
     </select>
     <small id="presetHint" class="muted">選擇預設題庫後可直接開始</small>
 
@@ -25,6 +27,18 @@
     <p>貼 Google Sheet CSV 連結（<code>.../pub?output=csv</code>），或直接輸入清單：</p>
     <input id="csvUrl" type="url" placeholder="CSV 連結（選填）" />
     <textarea id="manualList" placeholder="每行一筆，格式：名稱, 圖片網址"></textarea>
+
+    <div class="mode-picker" style="margin: 8px 0;">
+      <strong>賽制模式：</strong>
+      <label style="margin-right: 12px;">
+        <input type="radio" name="mode" value="quick" />
+        快速 Battle（淘汰賽）
+      </label>
+      <label>
+        <input type="radio" name="mode" value="rank" checked />
+        嚴謹排序版（二分插入）
+      </label>
+    </div>
 
     <div class="setup-actions">
       <button id="startBtn" class="btn primary">開始比賽</button>
@@ -52,14 +66,18 @@
       <section class="arena" aria-label="對戰區">
         <div class="card" id="cardA" tabindex="0" aria-label="左側選項">
           <img id="imgA" alt="" />
-          <div class="card-info"><h2 id="nameA">A</h2></div>
+          <div class="card-info">
+            <h2 id="nameA">A</h2>
+          </div>
         </div>
 
         <div class="vs" aria-hidden="true">VS</div>
 
         <div class="card" id="cardB" tabindex="0" aria-label="右側選項">
           <img id="imgB" alt="" />
-          <div class="card-info"><h2 id="nameB">B</h2></div>
+          <div class="card-info">
+            <h2 id="nameB">B</h2>
+          </div>
         </div>
       </section>
 
@@ -74,4 +92,5 @@
 
   <script src="script.js" defer></script>
 </body>
+
 </html>
