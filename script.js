@@ -44,6 +44,12 @@ const PRESET_BANKS = [
     label: "KPOP女豆BATTLE",
     url:
       "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx4T46KlhDjb5LpnkTDjbF2_jQ_3aRK0SGXjfW2szL8oBoCmW2a-YMHpl8uSxHNqW_KMa09Y8KAqmi/pub?gid=1697531857&single=true&output=csv"
+  },
+  {
+    id: "kpop-boygroup",
+    label: "KPOP男團BATTLE(部分)",
+    url:
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx4T46KlhDjb5LpnkTDjbF2_jQ_3aRK0SGXjfW2szL8oBoCmW2a-YMHpl8uSxHNqW_KMa09Y8KAqmi/pub?gid=544567236&single=true&output=csv"
   }
 ];
 
