@@ -1,96 +1,167 @@
 <!doctype html>
 <html lang="zh-Hant">
-
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>最愛BATTLE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1115" />
+  <title>最愛 BATTLE</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
-  <!-- Setup：選題庫 or 自行輸入 -->
   <section id="setup" class="setup-screen">
-    <h1>⚔️最愛BATTLE🏆</h1>
-
-    <label for="presetSelect">預設題庫（選填）</label>
-    <select id="presetSelect">
-      <option value="">選擇題庫</option>
-    </select>
-    <small id="presetHint" class="muted">選擇預設題庫後可直接開始</small>
-
-    <div id="previewRow" class="preview-row">
-      <span id="previewCount" class="muted"></span>
-      <button id="reloadPreviewBtn" class="btn ghost" type="button">重整預覽</button>
+    <div class="hero">
+      <div class="hero-kicker">PICK YOUR FAVORITE</div>
+      <h1>最愛 <span>BATTLE</span></h1>
+      <p>一路二選一，排出你的專屬喜好順位。</p>
     </div>
 
-    <p>貼 Google Sheet CSV 連結（<code>.../pub?output=csv</code>），或直接輸入清單：</p>
-    <input id="csvUrl" type="url" placeholder="CSV 連結（選填）" />
-    <textarea id="manualList" placeholder="每行一筆，格式：名稱, 圖片網址"></textarea>
+    <div id="resumePanel" class="resume-panel hidden">
+      <div>
+        <strong>有一場尚未完成的 Battle</strong>
+        <div id="resumeText" class="muted"></div>
+      </div>
+      <div class="resume-actions">
+        <button id="resumeBtn" class="btn primary" type="button">繼續 Battle</button>
+        <button id="discardResumeBtn" class="btn ghost" type="button">捨棄</button>
+      </div>
+    </div>
 
-    <div class="mode-picker" style="margin: 8px 0;">
-      <strong>賽制模式：</strong>
-      <label style="margin-right: 12px;">
-        <input type="radio" name="mode" value="quick" />
-        快速 Battle（淘汰賽）
-      </label>
-      <label>
-        <input type="radio" name="mode" value="rank" checked />
-        嚴謹排序版（二分插入）
-      </label>
+    <div class="setup-section">
+      <div class="section-heading">
+        <div>
+          <div class="step-label">01</div>
+          <h2>選一個題庫</h2>
+        </div>
+        <span id="previewCount" class="count-badge"></span>
+      </div>
+
+      <div id="presetChips" class="preset-grid" aria-label="預設題庫"></div>
+      <select id="presetSelect" class="sr-only" aria-label="預設題庫">
+        <option value="">選擇題庫</option>
+      </select>
+
+      <details class="custom-source">
+        <summary>建立自己的題庫</summary>
+        <div class="custom-source-body">
+          <label for="csvUrl">Google Sheet CSV 連結</label>
+          <input id="csvUrl" type="url" placeholder="https://.../pub?output=csv" />
+          <div class="or-divider"><span>或</span></div>
+          <label for="manualList">直接貼上清單</label>
+          <textarea id="manualList" placeholder="每行一筆，例如：名稱, 圖片網址"></textarea>
+          <button id="reloadPreviewBtn" class="btn ghost compact" type="button">重新讀取題庫預覽</button>
+        </div>
+      </details>
+    </div>
+
+    <div class="setup-section">
+      <div class="section-heading">
+        <div>
+          <div class="step-label">02</div>
+          <h2>選擇玩法</h2>
+        </div>
+      </div>
+
+      <div class="mode-grid">
+        <label class="mode-card">
+          <input type="radio" name="mode" value="quick" />
+          <span class="mode-icon">⚡</span>
+          <span class="mode-copy">
+            <strong>快速 Battle</strong>
+            <small>用淘汰賽快速決出前後順位，適合人數較多時先玩一輪。</small>
+          </span>
+          <span class="mode-check">✓</span>
+        </label>
+
+        <label class="mode-card">
+          <input type="radio" name="mode" value="rank" checked />
+          <span class="mode-icon">🎯</span>
+          <span class="mode-copy">
+            <strong>完整排行</strong>
+            <small>用較少的二選一比較，逐步排出完整喜好順位。</small>
+          </span>
+          <span class="mode-check">✓</span>
+        </label>
+      </div>
     </div>
 
     <div class="setup-actions">
-      <button id="startBtn" class="btn primary">開始比賽</button>
+      <button id="startBtn" class="btn primary start-btn" type="button">開始 Battle</button>
+      <p class="muted start-hint">遊戲進度會自動保存在這台裝置。</p>
     </div>
   </section>
 
-  <!-- Tournament -->
   <section id="tournament" class="hidden">
     <header class="topbar">
-      <div class="title">單淘汰排行</div>
-      <div class="round-info" aria-live="polite">
-        <span id="roundLabel">—</span>
-        <span class="sep">•</span>
-        <span>本回合進度：<b id="roundProgress">0/0</b></span>
-        <span class="sep">•</span>
-        <span>剩餘選手：<b id="remaining">0</b></span>
+      <div class="topbar-main">
+        <div class="title-wrap">
+          <div id="battleTitle" class="title">最愛 BATTLE</div>
+          <div id="roundLabel" class="round-label">—</div>
+        </div>
+
+        <div class="progress-block" aria-live="polite">
+          <div class="progress-copy">
+            <span id="progressText">準備中</span>
+            <strong id="roundProgress">0/0</strong>
+            <span id="remaining" class="sr-only">0</span>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <div id="progressBar" class="progress-bar"></div>
+          </div>
+        </div>
       </div>
+
       <nav class="actions">
-        <button id="undoBtn" class="btn" title="U">Undo</button>
-        <button id="resetBtn" class="btn danger" title="R">重置</button>
+        <button id="undoBtn" class="btn icon-btn" type="button" title="上一步（U）" aria-label="上一步">↶</button>
+        <button id="resetBtn" class="btn ghost icon-btn" type="button" title="重新開始（R）" aria-label="重新開始">⋯</button>
       </nav>
     </header>
 
     <main class="layout">
       <section class="arena" aria-label="對戰區">
-        <div class="card" id="cardA" tabindex="0" aria-label="左側選項">
+        <div class="card" id="cardA" tabindex="0" role="button" aria-label="選擇左側選項">
+          <div class="pick-badge">PICK</div>
           <img id="imgA" alt="" />
           <div class="card-info">
             <h2 id="nameA">A</h2>
+            <span>點一下選擇</span>
           </div>
         </div>
 
-        <div class="vs" aria-hidden="true">VS</div>
+        <div class="vs" aria-hidden="true"><span>VS</span></div>
 
-        <div class="card" id="cardB" tabindex="0" aria-label="右側選項">
+        <div class="card" id="cardB" tabindex="0" role="button" aria-label="選擇右側選項">
+          <div class="pick-badge">PICK</div>
           <img id="imgB" alt="" />
           <div class="card-info">
             <h2 id="nameB">B</h2>
+            <span>點一下選擇</span>
           </div>
         </div>
       </section>
 
       <aside class="sidebar">
         <div id="championBox" class="champion" hidden>
-          <h3>🏆 最終排名</h3>
+          <div class="result-header">
+            <div class="result-kicker">YOUR RESULT</div>
+            <h2>我的最愛排行</h2>
+            <p id="resultMeta" class="muted"></p>
+          </div>
+
+          <div id="podium" class="podium"></div>
+
+          <div class="result-actions">
+            <button id="copyResultBtn" class="btn primary" type="button">複製排名</button>
+            <button id="playAgainBtn" class="btn" type="button">再玩一次</button>
+          </div>
+
           <ol id="rankList" class="rank-list"></ol>
         </div>
       </aside>
     </main>
   </section>
 
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
   <script src="script.js" defer></script>
 </body>
-
 </html>

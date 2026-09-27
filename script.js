@@ -54,13 +54,14 @@ const PRESET_BANKS = [
 ];
 
 /* ===== State ===== */
-const STORAGE_KEY = "se-ranking-state-v7";
+const STORAGE_KEY = "se-ranking-state-v8";
 let state = {
   entries: [], // {id,name,img}[]
   finalRanking: [], // 完成後的 id[]
   history: [], // undo snapshots
   phaseLabel: "偏好排序",
-  mode: "rank" // 'quick' | 'rank'
+  mode: "rank", // 'quick' | 'rank'
+  battleTitle: "最愛 BATTLE"
 };
 
 /* ===== Utils ===== */
@@ -131,6 +132,88 @@ function preferredThumbUrl(rawUrl, size = 200) {
     return id ? toThumbnailUrl(id, size) : rawUrl;
   }
   return rawUrl;
+}
+
+/* ===== UI helpers / 本機進度保存 ===== */
+let choiceBusy = false;
+let toastTimer = 0;
+
+function showToast(message) {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 1800);
+}
+
+function progressPercent() {
+  const total = state.entries.length || 0;
+  if (!total) return 0;
+  if (activeDone()) return 100;
+  if (state.mode === "rank") {
+    return Math.max(0, Math.min(99, Math.round((Ranker.insertedCount() / total) * 100)));
+  }
+  if (QuickBattle.phase === "main") {
+    const alive = Math.max(1, QuickBattle.competitorsThisRound());
+    return Math.max(4, Math.min(82, Math.round((1 - alive / total) * 78) + 4));
+  }
+  if (QuickBattle.phase === "placement") {
+    const n = QuickBattle.placementRounds.length || 1;
+    return Math.max(84, Math.min(98, 84 + Math.round((QuickBattle.placementIdx / n) * 14)));
+  }
+  return 0;
+}
+
+function updateProgressUI() {
+  const bar = document.getElementById("progressBar");
+  const textEl = document.getElementById("progressText");
+  const titleEl = document.getElementById("battleTitle");
+  if (bar) bar.style.width = `${progressPercent()}%`;
+  if (titleEl) titleEl.textContent = state.battleTitle || "最愛 BATTLE";
+  if (!textEl) return;
+
+  if (activeDone()) {
+    textEl.textContent = "完成";
+  } else if (state.mode === "rank") {
+    const remain = Ranker.remainingCount();
+    textEl.textContent = remain > 0 ? `待排序 ${remain} 位` : "最後整理中";
+  } else if (QuickBattle.phase === "main") {
+    textEl.textContent = `第 ${QuickBattle.round} 輪`;
+  } else {
+    textEl.textContent = "排名決定戰";
+  }
+}
+
+function saveProgress() {
+  try {
+    if (!state.entries.length || activeDone()) {
+      localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+    const payload = {
+      version: 1,
+      savedAt: Date.now(),
+      snapshot: snapshotOf(),
+      history: state.history.slice(-12)
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (e) {
+    console.warn("進度保存失敗：", e);
+  }
+}
+
+function loadSavedPayload() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const payload = JSON.parse(raw);
+    if (!payload || !payload.snapshot) return null;
+    return payload;
+  } catch (e) {
+    console.warn("進度讀取失敗：", e);
+    return null;
+  }
 }
 
 /* ===== Parse（同名且同圖才去重；header 寬鬆） ===== */
@@ -667,6 +750,7 @@ function snapshotOf() {
     phaseLabel: state.phaseLabel,
     finalRanking: state.finalRanking,
     mode: state.mode,
+    battleTitle: state.battleTitle,
     ranker: {
       sorted: Ranker.sorted,
       rest: Ranker.rest,
@@ -715,14 +799,12 @@ function pushSnapshot() {
   const LIMIT = 200;
   if (state.history.length > LIMIT) state.history.shift();
 }
-function undo() {
-  const snap = state.history.pop();
-  if (!snap) return;
-  const s = JSON.parse(snap);
-  state.entries = s.entries;
-  state.phaseLabel = s.phaseLabel;
-  state.finalRanking = s.finalRanking;
+function applySnapshot(s) {
+  state.entries = s.entries || [];
+  state.phaseLabel = s.phaseLabel || "偏好排序";
+  state.finalRanking = s.finalRanking || [];
   state.mode = s.mode || "rank";
+  state.battleTitle = s.battleTitle || "最愛 BATTLE";
 
   const r = s.ranker || {};
   Ranker.sorted = r.sorted || [];
@@ -747,7 +829,6 @@ function undo() {
   QuickBattle.elim = q.elim || [];
   QuickBattle.championId = q.championId || null;
   QuickBattle.comparisons = q.comparisons || 0;
-
   QuickBattle.placementRounds = q.placementRounds || [];
   QuickBattle.placementIdx = q.placementIdx || 0;
   QuickBattle.placementStack = (q.placementStack || []).map((t) => ({
@@ -766,9 +847,20 @@ function undo() {
   }));
   QuickBattle._linkRestoredParents();
   QuickBattle.pResults = q.pResults || {};
-
-  renderAll();
 }
+
+function undo() {
+  if (choiceBusy) return;
+  const snap = state.history.pop();
+  if (!snap) {
+    showToast("目前沒有可復原的步驟");
+    return;
+  }
+  applySnapshot(JSON.parse(snap));
+  renderAll();
+  saveProgress();
+}
+
 
 /* ===== UI Rendering（兩模式共用） ===== */
 function getActivePair() {
@@ -781,8 +873,131 @@ function activeDone() {
   return Ranker.done;
 }
 function chooseWinner(id) {
-  if (state.mode === "quick") QuickBattle.choose(id);
-  else Ranker.choose(id);
+  if (choiceBusy || activeDone()) return;
+  const pair = getActivePair();
+  if (!pair || (id !== pair.a.id && id !== pair.b.id)) return;
+
+  choiceBusy = true;
+  const aCard = document.getElementById("cardA");
+  const bCard = document.getElementById("cardB");
+  const winnerCard = id === pair.a.id ? aCard : bCard;
+  const loserCard = id === pair.a.id ? bCard : aCard;
+  [aCard, bCard].forEach((el) => el && el.classList.add("is-busy"));
+  if (winnerCard) winnerCard.classList.add("is-winner");
+  if (loserCard) loserCard.classList.add("is-loser");
+
+  setTimeout(() => {
+    [aCard, bCard].forEach((el) => {
+      if (!el) return;
+      el.classList.remove("is-busy", "is-winner", "is-loser");
+    });
+    if (state.mode === "quick") QuickBattle.choose(id);
+    else Ranker.choose(id);
+    choiceBusy = false;
+    saveProgress();
+  }, 180);
+}
+
+function renderResults() {
+  const podium = document.getElementById("podium");
+  const list = document.getElementById("rankList");
+  const meta = document.getElementById("resultMeta");
+  if (!podium || !list) return;
+
+  const entries = state.finalRanking
+    .map((id) => state.entries.find((e) => e.id === id))
+    .filter(Boolean);
+
+  const now = new Date();
+  const dateOnly = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (meta) meta.textContent = `${state.battleTitle || "最愛 BATTLE"} · ${dateOnly} · ${entries.length} 位`;
+
+  podium.innerHTML = "";
+  const classes = ["first", "second", "third"];
+  entries.slice(0, 3).forEach((e, i) => {
+    const item = document.createElement("div");
+    item.className = `podium-item ${classes[i] || ""}`;
+
+    const rank = document.createElement("span");
+    rank.className = "podium-rank";
+    rank.textContent = i === 0 ? "👑" : `#${i + 1}`;
+
+    const img = document.createElement("img");
+    setImage(img, e.name, e.img);
+
+    const name = document.createElement("span");
+    name.className = "podium-name";
+    name.textContent = e.name;
+
+    item.append(rank, img, name);
+    podium.appendChild(item);
+  });
+
+  list.innerHTML = "";
+  entries.forEach((e, i) => {
+    const li = document.createElement("li");
+    li.className = "rank-item";
+
+    const num = document.createElement("span");
+    num.className = "rank-number";
+    num.textContent = i < 3 ? medalFor(i) || `#${i + 1}` : `#${i + 1}`;
+
+    const img = document.createElement("img");
+    img.className = "rank-avatar";
+    setImage(img, e.name, e.img);
+
+    const name = document.createElement("span");
+    name.className = "rank-name";
+    name.textContent = e.name;
+
+    li.append(num, img, name);
+    list.appendChild(li);
+  });
+}
+
+function copyResult() {
+  const rows = state.finalRanking
+    .map((id, i) => {
+      const e = state.entries.find((x) => x.id === id);
+      return e ? `${i + 1}. ${e.name}` : null;
+    })
+    .filter(Boolean);
+  if (!rows.length) return;
+  const text = `${state.battleTitle || "最愛 BATTLE"}\n\n${rows.join("\n")}`;
+
+  const fallback = () => {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch {}
+    ta.remove();
+    showToast("排名已複製");
+  };
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(() => showToast("排名已複製")).catch(fallback);
+  } else {
+    fallback();
+  }
+}
+
+function restartSameBattle() {
+  if (!state.entries.length) return;
+  state.finalRanking = [];
+  state.history = [];
+  const ids = state.entries.map((e) => e.id);
+  if (state.mode === "quick") QuickBattle.start(ids, Math.random);
+  else Ranker.start(ids, Math.random);
+
+  const t = document.getElementById("tournament");
+  if (t) t.classList.remove("finished");
+  const box = document.getElementById("championBox");
+  if (box) box.hidden = true;
+  renderAll();
+  saveProgress();
 }
 
 function renderArena() {
@@ -803,67 +1018,17 @@ function renderArena() {
     const vs = $(".vs");
     if (vs) vs.style.display = "none";
 
-    $("#roundLabel").textContent = "排序結果";
-    $("#roundProgress").textContent = "—";
-    $("#remaining").textContent = "—";
+    $("#roundLabel").textContent = "完成排行";
+    $("#roundProgress").textContent = "100%";
+    $("#remaining").textContent = "0";
 
     const box = $("#championBox");
     box.hidden = false;
-    const ol = $("#rankList");
-
-    const now = new Date();
-    const dateOnly =
-      now.getFullYear() +
-      "-" +
-      String(now.getMonth() + 1).padStart(2, "0") +
-      "-" +
-      String(now.getDate()).padStart(2, "0");
-    ol.innerHTML = `<p style="text-align:center;color:var(--muted);margin:10px 0;line-height:1.8;">📅：${dateOnly}</p>`;
-    ol.style.listStyle = "none";
-    ol.style.paddingLeft = "0";
-
-    state.finalRanking.forEach((id, i) => {
-      const e = state.entries.find((x) => x.id === id);
-      if (!e) return;
-
-      const li = document.createElement("li");
-      li.style.display = "flex";
-      li.style.alignItems = "center";
-      li.style.gap = "8px";
-      li.style.margin = "6px 0";
-
-      const num = document.createElement("span");
-      num.textContent = `${i + 1}.`;
-      num.style.width = "2.2em";
-      num.style.textAlign = "right";
-      num.style.fontWeight = "700";
-
-      const medalSpan = document.createElement("span");
-      medalSpan.textContent = medalFor(i);
-      medalSpan.style.width = "1.2em";
-      medalSpan.style.textAlign = "center";
-
-      const img = document.createElement("img");
-      img.src = preferredThumbUrl(e.img, 120);
-      img.alt = e.name;
-      img.style.width = "40px";
-      img.style.height = "40px";
-      img.style.objectFit = "cover";
-      img.style.objectPosition = "center";
-      img.style.borderRadius = "4px";
-
-      const nameSpan = document.createElement("span");
-      nameSpan.textContent = e.name;
-
-      li.appendChild(num);
-      li.appendChild(medalSpan);
-      li.appendChild(img);
-      li.appendChild(nameSpan);
-      ol.appendChild(li);
-    });
+    renderResults();
 
     const sb = $(".sidebar");
     if (sb) sb.style.display = "block";
+    updateProgressUI();
     return;
   }
 
@@ -888,7 +1053,7 @@ function renderArena() {
     const total = Ranker.total || state.entries.length || 0;
     const remain = Ranker.remainingCount();
 
-    $("#roundLabel").textContent = `嚴謹排序版｜二分插入排序`;
+    $("#roundLabel").textContent = `完整排行`;
     $("#roundProgress").textContent = `${inserted}/${total}`;
     $("#remaining").textContent = String(remain);
   } else {
@@ -903,7 +1068,7 @@ function renderArena() {
       const curBucketNo = Math.min(QuickBattle.placementIdx + 1, totalBuckets);
       $(
         "#roundLabel"
-      ).textContent = `快速 Battle｜排位賽（組 ${curBucketNo}/${totalBuckets}）`;
+      ).textContent = `排名決定戰｜${curBucketNo}/${totalBuckets}`;
       $("#roundProgress").textContent = QuickBattle.roundProgress();
       $("#remaining").textContent = String(
         QuickBattle.remainingMatchesThisRound()
@@ -911,6 +1076,7 @@ function renderArena() {
     }
   }
 
+  updateProgressUI();
   if (typeof scheduleFitCards === "function") scheduleFitCards([0], 2);
 }
 
@@ -934,7 +1100,7 @@ function fitCards() {
   const vs = arena.querySelector(".vs");
   const vsH = vs ? vs.getBoundingClientRect().height : 0;
   const rowGap = parseFloat(aCS.rowGap || aCS.gap || "0") || 0;
-  const isMobile = window.matchMedia("(max-width: 960px)").matches;
+  const isMobile = window.matchMedia("(max-width: 760px)").matches;
 
   const perCardTotalH = isMobile ? (arenaH - vsH - rowGap) / 2 : arenaH;
 
@@ -1032,6 +1198,7 @@ function resetAll() {
   state.history = [];
   state.phaseLabel = "偏好排序";
   state.mode = "rank";
+  state.battleTitle = "最愛 BATTLE";
 
   // 清 Ranker
   Ranker.sorted = [];
@@ -1108,6 +1275,9 @@ function resetAll() {
   if (url) url.value = "";
   if (manual) manual.value = "";
   if (preview) preview.textContent = "";
+  document.querySelectorAll(".preset-card.active").forEach((el) => el.classList.remove("active"));
+  const resumePanel = document.getElementById("resumePanel");
+  if (resumePanel) resumePanel.classList.add("hidden");
 
   // 回到頂端
   window.scrollTo({ top: 0, behavior: "instant" });
@@ -1115,23 +1285,42 @@ function resetAll() {
 
 /* ===== 綁定事件（依模式分派；重置改呼叫 resetAll） ===== */
 function bindTournamentEvents() {
-  $("#cardA").addEventListener("click", () => {
+  if (bindTournamentEvents._bound) return;
+  bindTournamentEvents._bound = true;
+
+  const cardA = $("#cardA");
+  const cardB = $("#cardB");
+  cardA.addEventListener("click", () => {
     const p = getActivePair();
-    if (!p) return;
-    chooseWinner(p.a.id);
+    if (p) chooseWinner(p.a.id);
   });
-  $("#cardB").addEventListener("click", () => {
+  cardB.addEventListener("click", () => {
     const p = getActivePair();
-    if (!p) return;
-    chooseWinner(p.b.id);
+    if (p) chooseWinner(p.b.id);
   });
+
+  const activateCard = (side) => (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    const p = getActivePair();
+    if (p) chooseWinner(side === "a" ? p.a.id : p.b.id);
+  };
+  cardA.addEventListener("keydown", activateCard("a"));
+  cardB.addEventListener("keydown", activateCard("b"));
 
   $("#undoBtn").addEventListener("click", undo);
   $("#resetBtn").addEventListener("click", () => {
-    if (confirm("確定重置？這會清空目前賽程與結果。")) resetAll();
+    if (confirm("要結束目前 Battle 並回到首頁嗎？目前進度會被清除。")) resetAll();
   });
 
+  const copyBtn = document.getElementById("copyResultBtn");
+  if (copyBtn) copyBtn.addEventListener("click", copyResult);
+  const againBtn = document.getElementById("playAgainBtn");
+  if (againBtn) againBtn.addEventListener("click", restartSameBattle);
+
   window.addEventListener("keydown", (e) => {
+    const tag = document.activeElement?.tagName?.toLowerCase();
+    if (["input", "textarea", "select"].includes(tag)) return;
     if (e.key === "ArrowLeft") {
       const p = getActivePair();
       if (p) chooseWinner(p.a.id);
@@ -1146,60 +1335,145 @@ function bindTournamentEvents() {
   });
 }
 
+
 /* ===== 預設題庫下拉（若有） ===== */
 function initPresetSelectIfAny() {
   const sel = document.getElementById("presetSelect");
+  const grid = document.getElementById("presetChips");
+  const previewEl = document.getElementById("previewCount");
   if (!sel) return;
 
-  sel.innerHTML = '<option value="">(不使用預設題庫)</option>';
-  (PRESET_BANKS || []).forEach((b) => {
+  sel.innerHTML = '<option value="">自訂題庫</option>';
+  if (grid) grid.innerHTML = "";
+
+  (PRESET_BANKS || []).forEach((b, index) => {
     const opt = document.createElement("option");
     opt.value = b.id;
     opt.textContent = b.label || b.id;
     sel.appendChild(opt);
+
+    if (grid) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "preset-card";
+      btn.dataset.presetId = b.id;
+      btn.innerHTML = `<span class="preset-tag">PRESET ${String(index + 1).padStart(2, "0")}</span><strong>${b.label || b.id}</strong><small>點一下選擇題庫</small>`;
+      btn.addEventListener("click", () => {
+        sel.value = b.id;
+        const url = $("#csvUrl"), ta = $("#manualList");
+        if (url) url.value = "";
+        if (ta) ta.value = "";
+        sel.dispatchEvent(new Event("change"));
+      });
+      grid.appendChild(btn);
+    }
   });
 
-  const previewEl = document.getElementById("previewCount");
   async function refreshPreview() {
     if (!previewEl) return;
-    previewEl.textContent = "";
     const pickedId = sel.value;
-    if (!pickedId) return;
+    document.querySelectorAll(".preset-card").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.presetId === pickedId);
+    });
+    if (!pickedId) {
+      const manual = $("#manualList")?.value?.trim() || "";
+      const rows = manual ? parseManualList(manual) : [];
+      previewEl.textContent = rows.length ? `${rows.length} 位` : "";
+      return;
+    }
     const bank = PRESET_BANKS.find((x) => x.id === pickedId);
     if (!bank) return;
-    previewEl.textContent = "載入預覽中…";
+    previewEl.textContent = "讀取中…";
     try {
       const r = await fetch(bank.url, { cache: "no-store" });
-      const txt = await r.text();
-      const rows = parseCsvText(txt);
-      previewEl.textContent =
-        rows.length > 0 ? `預覽：${rows.length} 筆` : "預覽失敗或為 0 筆";
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const rows = parseCsvText(await r.text());
+      previewEl.textContent = rows.length > 0 ? `${rows.length} 位` : "題庫為空";
+      const active = document.querySelector(`.preset-card[data-preset-id="${pickedId}"] small`);
+      if (active) active.textContent = rows.length > 0 ? `${rows.length} 位參賽者` : "目前沒有資料";
     } catch (_e) {
-      previewEl.textContent = "預覽失敗";
+      previewEl.textContent = "讀取失敗";
     }
   }
 
-  sel.addEventListener("change", () => {
-    const url = $("#csvUrl"),
-      ta = $("#manualList");
-    if (sel.value) {
-      if (url) url.value = "";
-      if (ta) ta.value = "";
-      refreshPreview();
-    } else if (previewEl) {
-      previewEl.textContent = "";
+  sel.addEventListener("change", refreshPreview);
+
+  const manual = document.getElementById("manualList");
+  if (manual) manual.addEventListener("input", () => {
+    if (manual.value.trim()) {
+      sel.value = "";
+      document.querySelectorAll(".preset-card.active").forEach((el) => el.classList.remove("active"));
+    }
+    const count = parseManualList(manual.value).length;
+    if (previewEl) previewEl.textContent = count ? `${count} 位` : "";
+  });
+
+  const csv = document.getElementById("csvUrl");
+  if (csv) csv.addEventListener("input", () => {
+    if (csv.value.trim()) {
+      sel.value = "";
+      document.querySelectorAll(".preset-card.active").forEach((el) => el.classList.remove("active"));
+      if (previewEl) previewEl.textContent = "";
     }
   });
 
   const reload = document.getElementById("reloadPreviewBtn");
   if (reload && !reload._bound) {
-    reload.addEventListener(
-      "click",
-      () => sel.value && sel.dispatchEvent(new Event("change"))
-    );
+    reload.addEventListener("click", async () => {
+      if (sel.value) return refreshPreview();
+      const url = csv?.value?.trim();
+      if (!url) return showToast("請先選題庫或輸入 CSV 連結");
+      if (previewEl) previewEl.textContent = "讀取中…";
+      try {
+        const r = await fetch(url, { cache: "no-store" });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const rows = parseCsvText(await r.text());
+        if (previewEl) previewEl.textContent = rows.length ? `${rows.length} 位` : "題庫為空";
+      } catch {
+        if (previewEl) previewEl.textContent = "讀取失敗";
+      }
+    });
     reload._bound = true;
   }
 }
+
+function initResumeIfAny() {
+  const payload = loadSavedPayload();
+  const panel = document.getElementById("resumePanel");
+  const textEl = document.getElementById("resumeText");
+  const resumeBtn = document.getElementById("resumeBtn");
+  const discardBtn = document.getElementById("discardResumeBtn");
+  if (!panel || !payload) return;
+
+  try {
+    const snap = JSON.parse(payload.snapshot);
+    const count = snap.entries?.length || 0;
+    if (count < 2) return;
+    const modeText = snap.mode === "quick" ? "快速 Battle" : "完整排行";
+    if (textEl) textEl.textContent = `${snap.battleTitle || "最愛 BATTLE"} · ${modeText} · ${count} 位`;
+    panel.classList.remove("hidden");
+
+    resumeBtn?.addEventListener("click", () => {
+      applySnapshot(snap);
+      state.history = Array.isArray(payload.history) ? payload.history : [];
+      $("#setup").classList.add("hidden");
+      $("#tournament").classList.remove("hidden");
+      bindTournamentEvents();
+      renderAll();
+      scheduleFitCards([0, 60, 250], 4);
+    }, { once: true });
+
+    discardBtn?.addEventListener("click", () => {
+      try { localStorage.removeItem(STORAGE_KEY); } catch {}
+      panel.classList.add("hidden");
+      showToast("已捨棄舊進度");
+    });
+  } catch (e) {
+    console.warn("續玩資料損壞：", e);
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  }
+}
+
 
 /* ===== Setup → Start（含模式選擇） ===== */
 document.getElementById("startBtn").addEventListener("click", async () => {
@@ -1250,6 +1524,8 @@ document.getElementById("startBtn").addEventListener("click", async () => {
   // 讀取模式
   const modeInput = document.querySelector('input[name="mode"]:checked');
   state.mode = modeInput ? modeInput.value : "rank";
+  const selectedBank = presetId ? PRESET_BANKS.find((x) => x.id === presetId) : null;
+  state.battleTitle = selectedBank?.label || "自訂 Battle";
 
   // 初始化狀態
   state.entries = deepClone(entries);
@@ -1278,15 +1554,21 @@ document.getElementById("startBtn").addEventListener("click", async () => {
   $("#tournament").classList.remove("hidden");
   bindTournamentEvents();
   renderAll();
+  saveProgress();
   scheduleFitCards([0, 60, 250], 4);
 });
 
 /* ===== 初始化 ===== */
-window.addEventListener("DOMContentLoaded", initPresetSelectIfAny);
+window.addEventListener("DOMContentLoaded", () => {
+  initPresetSelectIfAny();
+  initResumeIfAny();
+  bindTournamentEvents();
+});
 
 // 每次重繪後也排重算
 const __renderAll = renderAll;
 renderAll = function () {
   __renderAll();
+  updateProgressUI();
   scheduleFitCards([0, 60], 2);
 };
